@@ -1,183 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>순회차량 코스 테스트</title>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f0f2f5; font-family: 맑은고딕, sans-serif; }
-
-    /* ── 로그인 ── */
-    #로그인화면 { display:flex; justify-content:center; align-items:center; min-height:100vh; }
-    .로그인박스 { background:white; border-radius:16px; padding:40px; box-shadow:0 4px 20px rgba(0,0,0,0.12); width:340px; text-align:center; }
-    .로그인박스 h2 { color:#1a73e8; margin-bottom:6px; font-size:20px; }
-    .로그인박스 .sub { color:#888; font-size:13px; margin-bottom:24px; }
-    .입력그룹 { margin-bottom:12px; text-align:left; }
-    .입력그룹 label { font-size:12px; color:#555; font-weight:bold; display:block; margin-bottom:4px; }
-    .입력그룹 input { width:100%; padding:10px 14px; border:1px solid #ddd; border-radius:8px; font-size:14px; font-family:맑은고딕,sans-serif; }
-    .로그인버튼 { width:100%; padding:12px; background:#1a73e8; color:white; border:none; border-radius:8px; font-size:15px; cursor:pointer; margin-top:8px; font-family:맑은고딕,sans-serif; font-weight:bold; }
-    .로그인버튼:hover { background:#1558b0; }
-
-    /* ── 모달 ── */
-    .모달배경 { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center; }
-    .모달배경.열림 { display:flex; }
-    .모달박스 { background:white; border-radius:16px; padding:32px; width:320px; box-shadow:0 8px 32px rgba(0,0,0,0.2); }
-    .모달박스 h3 { font-size:16px; color:#333; margin-bottom:20px; }
-    .모달버튼묶음 { display:flex; gap:8px; margin-top:16px; }
-    .모달버튼 { flex:1; padding:10px; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:맑은고딕,sans-serif; }
-    .모달버튼.확인 { background:#1a73e8; color:white; }
-    .모달버튼.취소 { background:#f0f0f0; color:#555; }
-
-    /* ── 대시보드 ── */
-    #대시보드 { display:none; padding:16px; }
-    .상단바 { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
-    .상단바 h1 { color:#333; font-size:20px; }
-    .상단바 .우측 { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .뱃지 { background:#e8f0fe; color:#1a73e8; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; }
-
-    /* ── 컨트롤바 ── */
-    .컨트롤바 { background:white; border-radius:12px; padding:14px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:14px; display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
-    .컨트롤그룹 { display:flex; flex-direction:column; gap:4px; }
-    .컨트롤그룹 label { font-size:12px; color:#555; font-weight:bold; }
-    .컨트롤그룹 select,
-    .컨트롤그룹 input { padding:7px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; font-family:맑은고딕,sans-serif; }
-    .컨트롤그룹 input { min-width:240px; }
-    #출발지좌표표시 { font-size:12px; color:#888; align-self:flex-end; padding-bottom:8px; }
-
-    /* ── 버튼 ── */
-    .btn { padding:7px 14px; border:none; border-radius:8px; font-size:13px; cursor:pointer; font-family:맑은고딕,sans-serif; font-weight:bold; transition:opacity 0.15s; }
-    .btn:hover { opacity:0.85; }
-    .btn:disabled { opacity:0.5; cursor:not-allowed; }
-    .btn-blue   { background:#1a73e8; color:white; }
-    .btn-green  { background:#2e7d32; color:white; }
-    .btn-gray   { background:#f0f0f0; color:#555; }
-    .btn-red    { background:#e53935; color:white; }
-    .btn-sm { padding:5px 10px; font-size:12px; }
-
-    /* ── 그리드 ── */
-    .grid { display:flex; flex-direction:column; gap:8px; }
-
-    .row-wrap { background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.07); overflow:hidden; }
-
-    .row-main { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; min-height:56px; }
-    .row-label { font-weight:bold; font-size:13px; min-width:52px; padding-top:8px; flex-shrink:0; }
-    .row-label.미지정 { color:#888; }
-    .row-label.호차 { color:#1a73e8; }
-
-    .chip-zone {
-      flex:1; min-height:40px; padding:4px 6px;
-      display:flex; flex-wrap:wrap; gap:5px;
-      border-radius:8px; border:2px dashed transparent;
-      transition:border-color 0.15s, background 0.15s;
-      position:relative;
-    }
-    .chip-zone.drag-over { border-color:#1a73e8; background:#f0f6ff; }
-
-    .chip-zone-empty::after {
-      content:'지점을 드래그하세요';
-      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      color:#ccc; font-size:12px; pointer-events:none; white-space:nowrap;
-    }
-
-    .chip {
-      display:inline-flex; align-items:center; gap:5px;
-      background:#e8f0fe; color:#1a73e8;
-      border:1.5px solid #1a73e8; border-radius:16px;
-      padding:4px 10px; font-size:12px; font-weight:bold;
-      cursor:grab; user-select:none; white-space:nowrap;
-      transition:all 0.12s;
-    }
-    .chip:hover { background:#1a73e8; color:white; }
-    .chip.dragging { opacity:0.3; }
-    .chip .qty { background:#1a73e8; color:white; border-radius:8px; padding:1px 5px; font-size:10px; margin-left:2px; }
-    .chip:hover .qty { background:white; color:#1a73e8; }
-
-    .drop-indicator { width:3px; min-height:32px; background:#1a73e8; border-radius:2px; flex-shrink:0; pointer-events:none; }
-
-    .row-btn-area { display:flex; align-items:center; padding-top:6px; flex-shrink:0; }
-
-    /* ── 결과 ── */
-    .result-area { display:none; border-top:1px solid #f0f0f0; padding:10px 14px; }
-    .stats-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
-    .stat-box { background:#f8f9fa; border-radius:8px; padding:8px 14px; text-align:center; }
-    .stat-box .s-label { font-size:11px; color:#888; }
-    .stat-box .s-value { font-size:16px; font-weight:bold; color:#1a73e8; }
-    .map-box { width:100%; height:300px; border-radius:8px; }
-
-    /* ── 메시지 ── */
-    .msg { font-size:13px; margin-top:8px; }
-    .msg-err { color:#e53935; }
-    .msg-ok  { color:#2e7d32; }
-    .msg-ing { color:#1a73e8; }
-  </style>
-</head>
-<body>
-
-<!-- 로그인 -->
-<div id="로그인화면">
-  <div class="로그인박스">
-    <h2>🚛 Etland Milkrun</h2>
-    <p class="sub">순회차량 코스 테스트</p>
-    <div class="입력그룹">
-      <label>아이디</label>
-      <input type="text" id="입력ID" placeholder="아이디">
-    </div>
-    <div class="입력그룹">
-      <label>비밀번호</label>
-      <input type="password" id="입력PW" placeholder="비밀번호"
-             onkeydown="if(event.key==='Enter') 로그인()">
-    </div>
-    <button class="로그인버튼" onclick="로그인()">로그인</button>
-    <div class="msg msg-err" id="로그인오류" style="display:none">❌ 아이디 또는 비밀번호가 틀렸습니다</div>
-  </div>
-</div>
-
-<!-- 비밀번호 변경 모달 -->
-<div class="모달배경" id="비번모달">
-  <div class="모달박스">
-    <h3>🔑 비밀번호 변경</h3>
-    <div class="입력그룹"><label>현재 비밀번호</label><input type="password" id="현재비번"></div>
-    <div class="입력그룹"><label>새 비밀번호</label><input type="password" id="새비번"></div>
-    <div class="입력그룹"><label>새 비밀번호 확인</label><input type="password" id="새비번확인"></div>
-    <div id="비번메시지" class="msg" style="min-height:18px"></div>
-    <div class="모달버튼묶음">
-      <button class="모달버튼 취소" onclick="비번모달닫기()">취소</button>
-      <button class="모달버튼 확인" onclick="비번변경()">변경하기</button>
-    </div>
-  </div>
-</div>
-
-<!-- 대시보드 -->
-<div id="대시보드">
-  <div class="상단바">
-    <h1>🚛 순회차량 코스 테스트</h1>
-    <div class="우측">
-      <span class="뱃지" id="사용자뱃지">-</span>
-      <button class="btn btn-gray" onclick="비번모달열기()">🔑 비밀번호</button>
-      <button class="btn btn-red" onclick="로그아웃()">로그아웃</button>
-    </div>
-  </div>
-
-  <div class="컨트롤바">
-    <div class="컨트롤그룹">
-      <label>🏢 관할물류명</label>
-      <select id="sel관할" onchange="관할변경()"></select>
-    </div>
-    <div class="컨트롤그룹">
-      <label>🏁 출발지 주소</label>
-      <input type="text" id="출발지주소" placeholder="출발지 주소를 입력하세요">
-    </div>
-    <button class="btn btn-gray" onclick="좌표검색()" style="align-self:flex-end">📍 좌표검색</button>
-    <div id="출발지좌표표시"></div>
-    <button class="btn btn-green" onclick="전체계산()" style="align-self:flex-end;margin-left:auto">🔄 전체계산</button>
-  </div>
-
-  <div class="grid" id="grid"></div>
-</div>
-
-<script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=nti3kkmh2c"></script>
-<script>
 // ═══ 설정 ═══
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3u_qkSOIjW3yQVVvOalqhkET1N2HndGzPfGmzT87T13T4an1xUGQ0gx9DGxAztPok/exec';
 const 지점시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=0&single=true&output=csv';
@@ -189,14 +9,18 @@ let 계정목록 = [];
 let 현재사용자 = null;
 let 전체지점 = [];
 let 현재지점 = [];
-let 호차배치 = {};   // { '미지정': [코드...], '1호차': [코드...], ... }
-let 출발지좌표 = null; // { x:경도, y:위도 }
-let 지도맵 = {};    // { '1호차': naverMap }
-let 드래그정보 = null;
+// 호차배치: { '미지정': ['코드1',...], '물류': ['코드A',...], '1호차': ['코드1','코드A',...], ... }
+// 물류 행은 항상 전체 물류 지점 보여줌 (팔레트)
+// 호차 행에는 복사된 코드들 (중복 허용)
+let 호차배치 = {};
+let 출발지좌표 = null;
+let 지도맵 = {};
+let 드래그정보 = null; // { code, fromZone, isCopy }
 let 드롭성공 = false;
+let 드래그유령 = null;
 
 function 배치초기화() {
-  호차배치 = { '미지정': [] };
+  호차배치 = { '미지정': [], '물류': [] };
   호차목록.forEach(h => 호차배치[h] = []);
 }
 
@@ -223,6 +47,11 @@ function 숫자포맷(n) {
 
 function 지점조회(code) { return 전체지점.find(p => p.코드 === code); }
 
+function is물류(code) {
+  const p = 지점조회(code);
+  return p?.구분 === '물류';
+}
+
 // ═══ 계정/로그인 ═══
 fetch(계정시트URL).then(r=>r.text()).then(csv=>{
   const rows = CSV파싱(csv);
@@ -241,12 +70,13 @@ function 로그인() {
   document.getElementById('로그인오류').style.display='none';
   document.getElementById('로그인화면').style.display='none';
   document.getElementById('대시보드').style.display='block';
-  document.getElementById('사용자뱃지').textContent = `${계정.id} (${계정.권한==='전체'?'마스터':계정.권한})`;
+  document.getElementById('사용자뱃지').textContent =
+    `${계정.id} (${계정.권한==='전체'?'마스터':계정.권한})`;
   초기화();
 }
 
 function 로그아웃() {
-  현재사용자=null;
+  현재사용자 = null;
   document.getElementById('대시보드').style.display='none';
   document.getElementById('로그인화면').style.display='flex';
   ['입력ID','입력PW'].forEach(id=>document.getElementById(id).value='');
@@ -287,13 +117,14 @@ async function 초기화() {
     for (let i=1;i<rows.length;i++) {
       const v=rows[i]; if(!v[3]) continue;
       전체지점.push({
-        관할코드: v[0].trim(), 관할명: v[1].trim(),
+        관할코드: v[0]?.trim(), 관할명: v[1]?.trim(),
         호차:    (v[2]||'미지정').trim(),
-        코드:    v[3].trim(), 명: v[4].trim(),
-        주소:    (v[5]+' '+(v[6]||'')).trim(),
-        x:       v[7].trim(), y: v[8].trim(),
+        코드:    v[3].trim(), 명: v[4]?.trim()||v[3].trim(),
+        주소:    ((v[5]||'')+' '+(v[6]||'')).trim(),
+        x:       v[7]?.trim(), y: v[8]?.trim(),
         물동량:  v[9]?.trim()||'',
-        순서:    parseInt(v[10])||0
+        순서:    parseInt(v[10])||0,
+        구분:    (v[11]?.trim()||'지점')  // L열: '물류' or '지점'
       });
     }
   }
@@ -318,22 +149,31 @@ function 관할변경() {
   출발지좌표=null;
   document.getElementById('출발지좌표표시').textContent='';
 
-  // 호차 배치 (시트 데이터 기반)
   배치초기화();
-  const 미지정들=[];
 
-  현재지점.forEach(p=>{
+  // 물류 지점 → 물류 팔레트 (항상 전체 표시)
+  현재지점.filter(p=>p.구분==='물류').forEach(p=>{
+    호차배치['물류'].push(p.코드);
+  });
+
+  // 일반 지점 → 호차 배치 or 미지정
+  현재지점.filter(p=>p.구분!=='물류').forEach(p=>{
     const h=(p.호차||'미지정').trim();
-    if(h==='미지정'||!호차배치[h]) { 미지정들.push({순서:p.순서,코드:p.코드}); }
-    else { 호차배치[h].push({순서:p.순서,코드:p.코드}); }
+    if(h==='미지정'||!호차배치[h]) {
+      호차배치['미지정'].push(p.코드);
+    } else {
+      호차배치[h].push({ 순서:p.순서, 코드:p.코드 });
+    }
   });
 
   // 순서 정렬
   호차목록.forEach(h=>{
-    호차배치[h].sort((a,b)=>a.순서-b.순서);
-    호차배치[h]=호차배치[h].map(o=>o.코드);
+    if(Array.isArray(호차배치[h]) && 호차배치[h].length>0
+       && typeof 호차배치[h][0]==='object') {
+      호차배치[h].sort((a,b)=>a.순서-b.순서);
+      호차배치[h]=호차배치[h].map(o=>o.코드);
+    }
   });
-  호차배치['미지정']=미지정들.map(o=>o.코드);
 
   지도맵={};
   renderGrid();
@@ -343,49 +183,69 @@ function 관할변경() {
 function renderGrid() {
   const grid=document.getElementById('grid');
   grid.innerHTML='';
+  // 물류 팔레트 행
+  grid.appendChild(makeRow('물류'));
+  // 미지정 행
   grid.appendChild(makeRow('미지정'));
+  // 호차 행
   호차목록.forEach(h=>grid.appendChild(makeRow(h)));
   setupDnD();
 }
 
-function makeRow(호차명) {
-  const isMi=호차명==='미지정';
-  const wrap=document.createElement('div');
-  wrap.className='row-wrap'; wrap.dataset.row=호차명;
+function makeRow(행명) {
+  const isMul=행명==='물류';
+  const isMi=행명==='미지정';
+  const isHo=!isMul&&!isMi;
 
-  const chips=호차배치[호차명]||[];
+  const wrap=document.createElement('div');
+  wrap.className='row-wrap'; wrap.dataset.row=행명;
+
+  let chips=호차배치[행명]||[];
   const isEmpty=chips.length===0;
 
-  // 메인 행
+  // 행 레이블 색상
+  let labelClass='row-label';
+  if(isMul) labelClass+=' 물류';
+  else if(isMi) labelClass+=' 미지정';
+  else labelClass+=' 호차';
+
+  // 칩 HTML — 물류 행은 data-is-palette="true"
+  const chipsHTML = chips.map(code=>{
+    const p=지점조회(code); if(!p) return '';
+    const palette=isMul?'data-is-palette="true"':'';
+    return `<div class="chip ${isMul?'chip-mul':''}" draggable="true"
+      data-code="${code}" ${palette}>
+      ${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}
+    </div>`;
+  }).join('');
+
   const main=document.createElement('div');
   main.className='row-main';
   main.innerHTML=`
-    <div class="row-label ${isMi?'미지정':'호차'}">${호차명}</div>
-    <div class="chip-zone ${isEmpty?'chip-zone-empty':''}" id="zone-${호차명}" data-zone="${호차명}">
-      ${chips.map(chipHTML).join('')}
+    <div class="${labelClass}">${isMul?'🏭 물류':행명}</div>
+    <div class="chip-zone ${isEmpty&&!isMul?'chip-zone-empty':''}"
+         id="zone-${행명}" data-zone="${행명}"
+         ${isMul?'data-palette="true"':''}>
+      ${chipsHTML}
     </div>
-    ${!isMi?`<div class="row-btn-area"><button class="btn btn-blue btn-sm" id="btn-${호차명}" onclick="코스계산('${호차명}')">🔄 코스계산</button></div>`:''}
+    ${isHo?`<div class="row-btn-area">
+      <button class="btn btn-blue btn-sm" id="btn-${행명}"
+        onclick="코스계산('${행명}')">🔄 코스계산</button>
+    </div>`:''}
   `;
   wrap.appendChild(main);
 
-  // 결과 영역 (호차만)
-  if(!isMi){
+  // 결과 영역
+  if(isHo){
     const result=document.createElement('div');
-    result.className='result-area'; result.id=`result-${호차명}`;
+    result.className='result-area'; result.id=`result-${행명}`;
     result.innerHTML=`
-      <div class="stats-row" id="stats-${호차명}"></div>
-      <div class="map-box" id="map-${호차명}"></div>
+      <div class="stats-row" id="stats-${행명}"></div>
+      <div class="map-box" id="map-${행명}"></div>
     `;
     wrap.appendChild(result);
   }
   return wrap;
-}
-
-function chipHTML(code) {
-  const p=지점조회(code); if(!p) return '';
-  return `<div class="chip" draggable="true" data-code="${code}">
-    ${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}
-  </div>`;
 }
 
 // ═══ 드래그&드롭 ═══
@@ -402,10 +262,12 @@ function setupDnD() {
 }
 
 function onDS(e) {
-  드래그정보={ code:e.currentTarget.dataset.code,
-               fromZone:e.currentTarget.closest('.chip-zone').dataset.zone };
+  const chip=e.currentTarget;
+  const fromZone=chip.closest('.chip-zone').dataset.zone;
+  const isPalette=chip.dataset.isPalette==='true';
+  드래그정보={ code:chip.dataset.code, fromZone, isPalette };
   드롭성공=false;
-  e.currentTarget.classList.add('dragging');
+  if(!isPalette) chip.classList.add('dragging');
   e.dataTransfer.effectAllowed='move';
 }
 
@@ -413,13 +275,16 @@ function onDE(e) {
   e.currentTarget.classList.remove('dragging');
   document.querySelectorAll('.chip-zone').forEach(z=>z.classList.remove('drag-over'));
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
-  if(!드롭성공) renderGrid(); // 드롭 안 됐으면 원상복구
+  // 팔레트가 아닌데 드롭 실패 → 원상복구
+  if(!드롭성공 && !드래그정보?.isPalette) renderGrid();
   드래그정보=null;
 }
 
 function onDO(e) {
   e.preventDefault();
   const zone=e.currentTarget;
+  // 물류 팔레트 행에는 드롭 불가
+  if(zone.dataset.palette) return;
   zone.classList.add('drag-over');
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
   const after=getAfterEl(zone, e.clientX);
@@ -435,29 +300,52 @@ function onDL(e) {
 
 function onDrop(e) {
   e.preventDefault();
-  드롭성공=true;
   const zone=e.currentTarget;
+  if(zone.dataset.palette) return; // 물류 행에는 드롭 불가
+  드롭성공=true;
   zone.classList.remove('drag-over');
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
   if(!드래그정보) return;
 
-  const { code, fromZone }=드래그정보;
+  const { code, fromZone, isPalette }=드래그정보;
   const toZone=zone.dataset.zone;
-  const after=getAfterEl(zone, e.clientX);
 
-  // DOM 업데이트
-  const oldChip=document.querySelector(`.chip[data-code="${code}"]`);
-  if(!oldChip) return;
-  after ? zone.insertBefore(oldChip,after) : zone.appendChild(oldChip);
-
-  // 데이터 업데이트
-  호차배치[fromZone]=호차배치[fromZone].filter(c=>c!==code);
-  호차배치[toZone]=[...zone.querySelectorAll('.chip')].map(c=>c.dataset.code);
+  if(isPalette) {
+    // 물류 팔레트 → 복사본 삽입
+    const p=지점조회(code); if(!p) return;
+    const after=getAfterEl(zone, e.clientX);
+    const newChip=document.createElement('div');
+    newChip.className='chip';
+    newChip.draggable=true;
+    newChip.dataset.code=code;
+    newChip.innerHTML=`${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}`;
+    after ? zone.insertBefore(newChip,after) : zone.appendChild(newChip);
+    // 데이터 업데이트
+    const newOrder=[...zone.querySelectorAll('.chip')].map(c=>c.dataset.code);
+    호차배치[toZone]=newOrder;
+    // 새 칩에 이벤트 연결
+    newChip.addEventListener('dragstart', onDS);
+    newChip.addEventListener('dragend',   onDE);
+  } else {
+    // 일반 이동
+    const after=getAfterEl(zone, e.clientX);
+    const oldChip=document.querySelector(
+      `.chip-zone[data-zone="${fromZone}"] .chip[data-code="${code}"]`
+    );
+    if(!oldChip) return;
+    after ? zone.insertBefore(oldChip,after) : zone.appendChild(oldChip);
+    호차배치[fromZone]=[...document.querySelector(
+      `.chip-zone[data-zone="${fromZone}"]`).querySelectorAll('.chip')]
+      .map(c=>c.dataset.code);
+    호차배치[toZone]=[...zone.querySelectorAll('.chip')]
+      .map(c=>c.dataset.code);
+  }
 
   // empty 클래스 갱신
   document.querySelectorAll('.chip-zone').forEach(z=>{
-    const name=z.dataset.zone;
-    z.classList.toggle('chip-zone-empty',(호차배치[name]||[]).length===0);
+    const n=z.dataset.zone;
+    if(n==='물류') return;
+    z.classList.toggle('chip-zone-empty',(호차배치[n]||[]).length===0);
   });
 }
 
@@ -490,18 +378,19 @@ async function 좌표검색() {
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'geocode',query:addr})});
     const data=await res.json();
-    if(data.addresses?.length>0) {
+    if(data.addresses?.length>0){
       출발지좌표={x:data.addresses[0].x, y:data.addresses[0].y};
       el.textContent=`✅ ${출발지좌표.x}, ${출발지좌표.y}`;
-      el.className='msg-ok';
-    } else { el.textContent='❌ 주소를 찾을 수 없어요'; el.className='msg-err'; }
-  } catch(e){ el.textContent='❌ 검색 오류'; el.className='msg-err'; }
+      el.className='msg msg-ok';
+    } else { el.textContent='❌ 주소를 찾을 수 없어요'; el.className='msg msg-err'; }
+  } catch(e){ el.textContent='❌ 검색 오류'; el.className='msg msg-err'; }
 }
 
 // ═══ 코스 계산 ═══
 async function 코스계산(호차명) {
   if(!출발지좌표){ alert('먼저 출발지 좌표를 검색해주세요!'); return; }
-  const 지점들=호차배치[호차명].map(code=>지점조회(code)).filter(Boolean);
+  const codes=호차배치[호차명]||[];
+  const 지점들=codes.map(code=>지점조회(code)).filter(Boolean);
   if(지점들.length===0){ alert(`${호차명}에 배치된 지점이 없어요!`); return; }
 
   const btn=document.getElementById(`btn-${호차명}`);
@@ -538,20 +427,16 @@ async function 코스계산(호차명) {
       statsEl.innerHTML='<span class="msg-err">경로 계산 실패</span>';
     }
 
-    // 지도
     그리기(호차명, 경로, 지점들);
-
-    // 시트 저장
     await 시트저장();
 
   } catch(e){ console.error(e); }
-  finally { btn.textContent='🔄 코스계산'; btn.disabled=false; }
+  finally{ btn.textContent='🔄 코스계산'; btn.disabled=false; }
 }
 
 // ═══ 지도 그리기 ═══
 function 그리기(호차명, 경로, 지점들) {
   const mapDiv=document.getElementById(`map-${호차명}`);
-
   if(!지도맵[호차명]) {
     지도맵[호차명]=new naver.maps.Map(mapDiv,{
       zoom:10,
@@ -560,15 +445,12 @@ function 그리기(호차명, 경로, 지점들) {
     지도맵[호차명]._overlays=[];
   }
   const map=지도맵[호차명];
-
-  // 기존 오버레이 제거
   map._overlays.forEach(o=>o.setMap(null));
   map._overlays=[];
-
-  const addOverlay=o=>{ o.setMap(map); map._overlays.push(o); };
+  const add=o=>{ o.setMap(map); map._overlays.push(o); };
 
   // 출발 마커
-  addOverlay(new naver.maps.Marker({
+  add(new naver.maps.Marker({
     position:new naver.maps.LatLng(Number(출발지좌표.y),Number(출발지좌표.x)),
     icon:{
       content:`<div style="background:#2e7d32;color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:bold;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap">🏁 출발</div>`,
@@ -576,9 +458,9 @@ function 그리기(호차명, 경로, 지점들) {
     }
   }));
 
-  // 지점 마커
+  // 지점 마커 (지점명 표시)
   지점들.forEach((p,i)=>{
-    addOverlay(new naver.maps.Marker({
+    add(new naver.maps.Marker({
       position:new naver.maps.LatLng(Number(p.y),Number(p.x)),
       icon:{
         content:`<div style="background:#1a73e8;color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:bold;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap">${i+1}. ${p.명}</div>`,
@@ -589,7 +471,7 @@ function 그리기(호차명, 경로, 지점들) {
 
   // 경로선
   if(경로?.path){
-    addOverlay(new naver.maps.Polyline({
+    add(new naver.maps.Polyline({
       path:경로.path.map(p=>new naver.maps.LatLng(p[1],p[0])),
       strokeColor:'#1a73e8', strokeWeight:4, strokeOpacity:0.8
     }));
@@ -605,7 +487,7 @@ function 그리기(호차명, 경로, 지점들) {
   map.fitBounds(bounds,{padding:50});
 }
 
-// ═══ 전체 계산 ═══
+// ═══ 전체계산 ═══
 async function 전체계산() {
   if(!출발지좌표){ alert('먼저 출발지 좌표를 검색해주세요!'); return; }
   const 배치된=호차목록.filter(h=>(호차배치[h]||[]).length>0);
@@ -621,12 +503,12 @@ async function 시트저장() {
   const 호차맵={};
   // 미지정
   (호차배치['미지정']||[]).forEach(code=>{
-    호차맵[code]={ 호차:'미지정', 순서:'' };
+    if(!is물류(code)) 호차맵[code]={ 호차:'미지정', 순서:'' };
   });
-  // 각 호차
+  // 각 호차 (물류 지점은 저장 제외)
   호차목록.forEach(h=>{
     (호차배치[h]||[]).forEach((code,idx)=>{
-      호차맵[code]={ 호차:h, 순서:idx+1 };
+      if(!is물류(code)) 호차맵[code]={ 호차:h, 순서:idx+1 };
     });
   });
   try {
@@ -634,6 +516,3 @@ async function 시트저장() {
       body:JSON.stringify({action:'saveHocha', 호차맵})});
   } catch(e){ console.error('저장 오류:',e); }
 }
-</script>
-</body>
-</html>
