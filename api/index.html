@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>순회차량 코스 테스트</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f0f2f5; font-family: 맑은고딕, sans-serif; }
+
+    /* ── 로그인 ── */
+    #로그인화면 { display:flex; justify-content:center; align-items:center; min-height:100vh; }
+    .로그인박스 { background:white; border-radius:16px; padding:40px; box-shadow:0 4px 20px rgba(0,0,0,0.12); width:340px; text-align:center; }
+    .로그인박스 h2 { color:#1a73e8; margin-bottom:6px; font-size:20px; }
+    .로그인박스 .sub { color:#888; font-size:13px; margin-bottom:24px; }
+    .입력그룹 { margin-bottom:12px; text-align:left; }
+    .입력그룹 label { font-size:12px; color:#555; font-weight:bold; display:block; margin-bottom:4px; }
+    .입력그룹 input { width:100%; padding:10px 14px; border:1px solid #ddd; border-radius:8px; font-size:14px; font-family:맑은고딕,sans-serif; }
+    .로그인버튼 { width:100%; padding:12px; background:#1a73e8; color:white; border:none; border-radius:8px; font-size:15px; cursor:pointer; margin-top:8px; font-family:맑은고딕,sans-serif; font-weight:bold; }
+    .로그인버튼:hover { background:#1558b0; }
+
+    /* ── 모달 ── */
+    .모달배경 { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center; }
+    .모달배경.열림 { display:flex; }
+    .모달박스 { background:white; border-radius:16px; padding:32px; width:320px; box-shadow:0 8px 32px rgba(0,0,0,0.2); }
+    .모달박스 h3 { font-size:16px; color:#333; margin-bottom:20px; }
+    .모달버튼묶음 { display:flex; gap:8px; margin-top:16px; }
+    .모달버튼 { flex:1; padding:10px; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:맑은고딕,sans-serif; }
+    .모달버튼.확인 { background:#1a73e8; color:white; }
+    .모달버튼.취소 { background:#f0f0f0; color:#555; }
+
+    /* ── 대시보드 ── */
+    #대시보드 { display:none; padding:16px; }
+    .상단바 { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+    .상단바 h1 { color:#333; font-size:20px; }
+    .상단바 .우측 { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .뱃지 { background:#e8f0fe; color:#1a73e8; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; }
+
+    /* ── 컨트롤바 ── */
+    .컨트롤바 { background:white; border-radius:12px; padding:14px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:14px; display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .컨트롤그룹 { display:flex; flex-direction:column; gap:4px; }
+    .컨트롤그룹 label { font-size:12px; color:#555; font-weight:bold; }
+    .컨트롤그룹 select,
+    .컨트롤그룹 input { padding:7px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; font-family:맑은고딕,sans-serif; }
+    .컨트롤그룹 input { min-width:240px; }
+    #출발지좌표표시 { font-size:12px; color:#888; align-self:flex-end; padding-bottom:8px; }
+
+    /* ── 버튼 ── */
+    .btn { padding:7px 14px; border:none; border-radius:8px; font-size:13px; cursor:pointer; font-family:맑은고딕,sans-serif; font-weight:bold; transition:opacity 0.15s; }
+    .btn:hover { opacity:0.85; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .btn-blue   { background:#1a73e8; color:white; }
+    .btn-green  { background:#2e7d32; color:white; }
+    .btn-gray   { background:#f0f0f0; color:#555; }
+    .btn-red    { background:#e53935; color:white; }
+    .btn-sm { padding:5px 10px; font-size:12px; }
+
+    /* ── 그리드 ── */
+    .grid { display:flex; flex-direction:column; gap:8px; }
+
+    .row-wrap { background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.07); overflow:hidden; }
+
+    .row-main { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; min-height:56px; }
+    .row-label { font-weight:bold; font-size:13px; min-width:52px; padding-top:8px; flex-shrink:0; }
+    .row-label.미지정 { color:#888; }
+    .row-label.호차 { color:#1a73e8; }
+
+    .chip-zone {
+      flex:1; min-height:40px; padding:4px 6px;
+      display:flex; flex-wrap:wrap; gap:5px;
+      border-radius:8px; border:2px dashed transparent;
+      transition:border-color 0.15s, background 0.15s;
+      position:relative;
+    }
+    .chip-zone.drag-over { border-color:#1a73e8; background:#f0f6ff; }
+
+    .chip-zone-empty::after {
+      content:'지점을 드래그하세요';
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      color:#ccc; font-size:12px; pointer-events:none; white-space:nowrap;
+    }
+
+    .chip {
+      display:inline-flex; align-items:center; gap:5px;
+      background:#e8f0fe; color:#1a73e8;
+      border:1.5px solid #1a73e8; border-radius:16px;
+      padding:4px 10px; font-size:12px; font-weight:bold;
+      cursor:grab; user-select:none; white-space:nowrap;
+      transition:all 0.12s;
+    }
+    .chip:hover { background:#1a73e8; color:white; }
+    .chip.dragging { opacity:0.3; }
+    .chip .qty { background:#1a73e8; color:white; border-radius:8px; padding:1px 5px; font-size:10px; margin-left:2px; }
+    .chip:hover .qty { background:white; color:#1a73e8; }
+
+    .drop-indicator { width:3px; min-height:32px; background:#1a73e8; border-radius:2px; flex-shrink:0; pointer-events:none; }
+
+    .row-btn-area { display:flex; align-items:center; padding-top:6px; flex-shrink:0; }
+
+    /* ── 결과 ── */
+    .result-area { display:none; border-top:1px solid #f0f0f0; padding:10px 14px; }
+    .stats-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .stat-box { background:#f8f9fa; border-radius:8px; padding:8px 14px; text-align:center; }
+    .stat-box .s-label { font-size:11px; color:#888; }
+    .stat-box .s-value { font-size:16px; font-weight:bold; color:#1a73e8; }
+    .map-box { width:100%; height:300px; border-radius:8px; }
+
+    /* ── 메시지 ── */
+    .msg { font-size:13px; margin-top:8px; }
+    .msg-err { color:#e53935; }
+    .msg-ok  { color:#2e7d32; }
+    .msg-ing { color:#1a73e8; }
+  </style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="로그인화면">
+  <div class="로그인박스">
+    <h2>🚛 Etland Milkrun</h2>
+    <p class="sub">순회차량 코스 테스트</p>
+    <div class="입력그룹">
+      <label>아이디</label>
+      <input type="text" id="입력ID" placeholder="아이디">
+    </div>
+    <div class="입력그룹">
+      <label>비밀번호</label>
+      <input type="password" id="입력PW" placeholder="비밀번호"
+             onkeydown="if(event.key==='Enter') 로그인()">
+    </div>
+    <button class="로그인버튼" onclick="로그인()">로그인</button>
+    <div class="msg msg-err" id="로그인오류" style="display:none">❌ 아이디 또는 비밀번호가 틀렸습니다</div>
+  </div>
+</div>
+
+<!-- 비밀번호 변경 모달 -->
+<div class="모달배경" id="비번모달">
+  <div class="모달박스">
+    <h3>🔑 비밀번호 변경</h3>
+    <div class="입력그룹"><label>현재 비밀번호</label><input type="password" id="현재비번"></div>
+    <div class="입력그룹"><label>새 비밀번호</label><input type="password" id="새비번"></div>
+    <div class="입력그룹"><label>새 비밀번호 확인</label><input type="password" id="새비번확인"></div>
+    <div id="비번메시지" class="msg" style="min-height:18px"></div>
+    <div class="모달버튼묶음">
+      <button class="모달버튼 취소" onclick="비번모달닫기()">취소</button>
+      <button class="모달버튼 확인" onclick="비번변경()">변경하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 대시보드 -->
+<div id="대시보드">
+  <div class="상단바">
+    <h1>🚛 순회차량 코스 테스트</h1>
+    <div class="우측">
+      <span class="뱃지" id="사용자뱃지">-</span>
+      <button class="btn btn-gray" onclick="비번모달열기()">🔑 비밀번호</button>
+      <button class="btn btn-red" onclick="로그아웃()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="컨트롤바">
+    <div class="컨트롤그룹">
+      <label>🏢 관할물류명</label>
+      <select id="sel관할" onchange="관할변경()"></select>
+    </div>
+    <div class="컨트롤그룹">
+      <label>🏁 출발지 주소</label>
+      <input type="text" id="출발지주소" placeholder="출발지 주소를 입력하세요">
+    </div>
+    <button class="btn btn-gray" onclick="좌표검색()" style="align-self:flex-end">📍 좌표검색</button>
+    <div id="출발지좌표표시"></div>
+    <button class="btn btn-green" onclick="전체계산()" style="align-self:flex-end;margin-left:auto">🔄 전체계산</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=nti3kkmh2c"></script>
+<script>
+// ═══ 설정 ═══
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3u_qkSOIjW3yQVVvOalqhkET1N2HndGzPfGmzT87T13T4an1xUGQ0gx9DGxAztPok/exec';
+const 지점시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=0&single=true&output=csv';
+const 계정시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTs6k1Ky8Hdnrl2U5A242Vg6ZqBaQSrLGkDr2xf_yMuMflYc-dD_2-v-2wRmIsip32W087DXCx4ZRzu/pub?gid=1375354052&single=true&output=csv';
+const 호차목록 = ['1호차','2호차','3호차','4호차','5호차','6호차','7호차','8호차','9호차','10호차'];
+
+// ═══ 상태 ═══
+let 계정목록 = [];
+let 현재사용자 = null;
+let 전체지점 = [];
+let 현재지점 = [];
+let 호차배치 = {};   // { '미지정': [코드...], '1호차': [코드...], ... }
+let 출발지좌표 = null; // { x:경도, y:위도 }
+let 지도맵 = {};    // { '1호차': naverMap }
+let 드래그정보 = null;
+let 드롭성공 = false;
+
+function 배치초기화() {
+  호차배치 = { '미지정': [] };
+  호차목록.forEach(h => 호차배치[h] = []);
+}
+
+// ═══ 유틸 ═══
+function CSV파싱(text) {
+  const rows = [];
+  for (const line of text.trim().split('\n')) {
+    const row = []; let inQ = false, cell = '';
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { row.push(cell.trim()); cell = ''; }
+      else cell += ch;
+    }
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+function 숫자포맷(n) {
+  if (n==null||n===''||isNaN(Number(n))) return '-';
+  return Number(n).toLocaleString();
+}
+
+function 지점조회(code) { return 전체지점.find(p => p.코드 === code); }
+
+// ═══ 계정/로그인 ═══
+fetch(계정시트URL).then(r=>r.text()).then(csv=>{
+  const rows = CSV파싱(csv);
+  for (let i=1;i<rows.length;i++) {
+    if (!rows[i][0]) continue;
+    계정목록.push({ id:rows[i][0].trim(), pw:rows[i][1].trim(), 권한:rows[i][2].trim() });
+  }
+});
+
+function 로그인() {
+  const id = document.getElementById('입력ID').value.trim();
+  const pw = document.getElementById('입력PW').value.trim();
+  const 계정 = 계정목록.find(a => a.id===id && a.pw===pw);
+  if (!계정) { document.getElementById('로그인오류').style.display='block'; return; }
+  현재사용자 = 계정;
+  document.getElementById('로그인오류').style.display='none';
+  document.getElementById('로그인화면').style.display='none';
+  document.getElementById('대시보드').style.display='block';
+  document.getElementById('사용자뱃지').textContent = `${계정.id} (${계정.권한==='전체'?'마스터':계정.권한})`;
+  초기화();
+}
+
+function 로그아웃() {
+  현재사용자=null;
+  document.getElementById('대시보드').style.display='none';
+  document.getElementById('로그인화면').style.display='flex';
+  ['입력ID','입력PW'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ═══ 비밀번호 변경 ═══
+function 비번모달열기() {
+  ['현재비번','새비번','새비번확인'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('비번메시지').textContent='';
+  document.getElementById('비번모달').classList.add('열림');
+}
+function 비번모달닫기() { document.getElementById('비번모달').classList.remove('열림'); }
+
+async function 비번변경() {
+  const 현재=document.getElementById('현재비번').value.trim();
+  const 새것=document.getElementById('새비번').value.trim();
+  const 확인=document.getElementById('새비번확인').value.trim();
+  const el=document.getElementById('비번메시지');
+  const show=(msg,cls)=>{el.textContent=msg; el.className=`msg ${cls}`;};
+  if(!현재||!새것||!확인){show('❌ 모든 항목을 입력해주세요','msg-err');return;}
+  if(새것!==확인){show('❌ 새 비밀번호가 일치하지 않습니다','msg-err');return;}
+  if(새것.length<4){show('❌ 비밀번호는 4자 이상','msg-err');return;}
+  show('⏳ 변경 중...','msg-ing');
+  try {
+    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',
+      body:JSON.stringify({action:'changePassword',id:현재사용자.id,oldPassword:현재,newPassword:새것})});
+    const data=await res.json();
+    if(data.success){ 현재사용자.pw=새것; show('✅ 변경 완료!','msg-ok'); setTimeout(비번모달닫기,1500); }
+    else show(`❌ ${data.message}`,'msg-err');
+  } catch(e){ show('❌ 오류 발생','msg-err'); }
+}
+
+// ═══ 초기화 ═══
+async function 초기화() {
+  if (전체지점.length===0) {
+    const csv = await fetch(지점시트URL).then(r=>r.text());
+    const rows = CSV파싱(csv);
+    for (let i=1;i<rows.length;i++) {
+      const v=rows[i]; if(!v[3]) continue;
+      전체지점.push({
+        관할코드: v[0].trim(), 관할명: v[1].trim(),
+        호차:    (v[2]||'미지정').trim(),
+        코드:    v[3].trim(), 명: v[4].trim(),
+        주소:    (v[5]+' '+(v[6]||'')).trim(),
+        x:       v[7].trim(), y: v[8].trim(),
+        물동량:  v[9]?.trim()||'',
+        순서:    parseInt(v[10])||0
+      });
+    }
+  }
+
+  // 관할 목록
+  const 허용 = 현재사용자.권한==='전체'
+    ? [...new Set(전체지점.map(p=>p.관할명))].sort()
+    : 현재사용자.권한.split(',').map(s=>s.trim());
+
+  const sel=document.getElementById('sel관할');
+  sel.innerHTML = 허용.map(v=>`<option value="${v}">${v}</option>`).join('');
+  관할변경();
+}
+
+function 관할변경() {
+  const 관할=document.getElementById('sel관할').value;
+  현재지점=전체지점.filter(p=>p.관할명===관할);
+
+  // 출발지 기본값
+  const el=document.getElementById('출발지주소');
+  if(!el.dataset.edited) el.value=관할;
+  출발지좌표=null;
+  document.getElementById('출발지좌표표시').textContent='';
+
+  // 호차 배치 (시트 데이터 기반)
+  배치초기화();
+  const 미지정들=[];
+
+  현재지점.forEach(p=>{
+    const h=(p.호차||'미지정').trim();
+    if(h==='미지정'||!호차배치[h]) { 미지정들.push({순서:p.순서,코드:p.코드}); }
+    else { 호차배치[h].push({순서:p.순서,코드:p.코드}); }
+  });
+
+  // 순서 정렬
+  호차목록.forEach(h=>{
+    호차배치[h].sort((a,b)=>a.순서-b.순서);
+    호차배치[h]=호차배치[h].map(o=>o.코드);
+  });
+  호차배치['미지정']=미지정들.map(o=>o.코드);
+
+  지도맵={};
+  renderGrid();
+}
+
+// ═══ 그리드 렌더링 ═══
+function renderGrid() {
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  grid.appendChild(makeRow('미지정'));
+  호차목록.forEach(h=>grid.appendChild(makeRow(h)));
+  setupDnD();
+}
+
+function makeRow(호차명) {
+  const isMi=호차명==='미지정';
+  const wrap=document.createElement('div');
+  wrap.className='row-wrap'; wrap.dataset.row=호차명;
+
+  const chips=호차배치[호차명]||[];
+  const isEmpty=chips.length===0;
+
+  // 메인 행
+  const main=document.createElement('div');
+  main.className='row-main';
+  main.innerHTML=`
+    <div class="row-label ${isMi?'미지정':'호차'}">${호차명}</div>
+    <div class="chip-zone ${isEmpty?'chip-zone-empty':''}" id="zone-${호차명}" data-zone="${호차명}">
+      ${chips.map(chipHTML).join('')}
+    </div>
+    ${!isMi?`<div class="row-btn-area"><button class="btn btn-blue btn-sm" id="btn-${호차명}" onclick="코스계산('${호차명}')">🔄 코스계산</button></div>`:''}
+  `;
+  wrap.appendChild(main);
+
+  // 결과 영역 (호차만)
+  if(!isMi){
+    const result=document.createElement('div');
+    result.className='result-area'; result.id=`result-${호차명}`;
+    result.innerHTML=`
+      <div class="stats-row" id="stats-${호차명}"></div>
+      <div class="map-box" id="map-${호차명}"></div>
+    `;
+    wrap.appendChild(result);
+  }
+  return wrap;
+}
+
+function chipHTML(code) {
+  const p=지점조회(code); if(!p) return '';
+  return `<div class="chip" draggable="true" data-code="${code}">
+    ${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}
+  </div>`;
+}
+
+// ═══ 드래그&드롭 ═══
+function setupDnD() {
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.addEventListener('dragstart', onDS);
+    c.addEventListener('dragend',   onDE);
+  });
+  document.querySelectorAll('.chip-zone').forEach(z=>{
+    z.addEventListener('dragover',  onDO);
+    z.addEventListener('dragleave', onDL);
+    z.addEventListener('drop',      onDrop);
+  });
+}
+
+function onDS(e) {
+  드래그정보={ code:e.currentTarget.dataset.code,
+               fromZone:e.currentTarget.closest('.chip-zone').dataset.zone };
+  드롭성공=false;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+
+function onDE(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.chip-zone').forEach(z=>z.classList.remove('drag-over'));
+  document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
+  if(!드롭성공) renderGrid(); // 드롭 안 됐으면 원상복구
+  드래그정보=null;
+}
+
+function onDO(e) {
+  e.preventDefault();
+  const zone=e.currentTarget;
+  zone.classList.add('drag-over');
+  document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
+  const after=getAfterEl(zone, e.clientX);
+  const ind=document.createElement('div');
+  ind.className='drop-indicator';
+  after ? zone.insertBefore(ind,after) : zone.appendChild(ind);
+}
+
+function onDL(e) {
+  if(!e.currentTarget.contains(e.relatedTarget))
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  드롭성공=true;
+  const zone=e.currentTarget;
+  zone.classList.remove('drag-over');
+  document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
+  if(!드래그정보) return;
+
+  const { code, fromZone }=드래그정보;
+  const toZone=zone.dataset.zone;
+  const after=getAfterEl(zone, e.clientX);
+
+  // DOM 업데이트
+  const oldChip=document.querySelector(`.chip[data-code="${code}"]`);
+  if(!oldChip) return;
+  after ? zone.insertBefore(oldChip,after) : zone.appendChild(oldChip);
+
+  // 데이터 업데이트
+  호차배치[fromZone]=호차배치[fromZone].filter(c=>c!==code);
+  호차배치[toZone]=[...zone.querySelectorAll('.chip')].map(c=>c.dataset.code);
+
+  // empty 클래스 갱신
+  document.querySelectorAll('.chip-zone').forEach(z=>{
+    const name=z.dataset.zone;
+    z.classList.toggle('chip-zone-empty',(호차배치[name]||[]).length===0);
+  });
+}
+
+function getAfterEl(container, x) {
+  const els=[...container.querySelectorAll('.chip:not(.dragging)')];
+  return els.reduce((closest,child)=>{
+    const box=child.getBoundingClientRect();
+    const offset=x-box.left-box.width/2;
+    if(offset<0 && offset>closest.offset) return {offset,element:child};
+    return closest;
+  },{offset:Number.NEGATIVE_INFINITY}).element;
+}
+
+// ═══ 출발지 좌표검색 ═══
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('출발지주소').addEventListener('input',()=>{
+    document.getElementById('출발지주소').dataset.edited='true';
+    출발지좌표=null;
+    document.getElementById('출발지좌표표시').textContent='';
+  });
+});
+
+async function 좌표검색() {
+  const addr=document.getElementById('출발지주소').value.trim();
+  if(!addr){ alert('주소를 입력해주세요'); return; }
+  const el=document.getElementById('출발지좌표표시');
+  el.textContent='⏳ 검색 중...';
+  try {
+    const res=await fetch('/api/directions',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'geocode',query:addr})});
+    const data=await res.json();
+    if(data.addresses?.length>0) {
+      출발지좌표={x:data.addresses[0].x, y:data.addresses[0].y};
+      el.textContent=`✅ ${출발지좌표.x}, ${출발지좌표.y}`;
+      el.className='msg-ok';
+    } else { el.textContent='❌ 주소를 찾을 수 없어요'; el.className='msg-err'; }
+  } catch(e){ el.textContent='❌ 검색 오류'; el.className='msg-err'; }
+}
+
+// ═══ 코스 계산 ═══
+async function 코스계산(호차명) {
+  if(!출발지좌표){ alert('먼저 출발지 좌표를 검색해주세요!'); return; }
+  const 지점들=호차배치[호차명].map(code=>지점조회(code)).filter(Boolean);
+  if(지점들.length===0){ alert(`${호차명}에 배치된 지점이 없어요!`); return; }
+
+  const btn=document.getElementById(`btn-${호차명}`);
+  btn.textContent='⏳...'; btn.disabled=true;
+
+  try {
+    const start=`${출발지좌표.x},${출발지좌표.y}`;
+    const goal=`${지점들.at(-1).x},${지점들.at(-1).y}`;
+    const waypoints=지점들.length>1
+      ? 지점들.slice(0,-1).map(p=>`${p.x},${p.y}`).join('|')
+      : undefined;
+
+    const res=await fetch('/api/directions',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({start,goal,waypoints})});
+    const data=await res.json();
+    const 경로=data.route?.trafast?.[0];
+
+    const resultEl=document.getElementById(`result-${호차명}`);
+    const statsEl=document.getElementById(`stats-${호차명}`);
+    resultEl.style.display='block';
+
+    if(경로?.summary){
+      const s=경로.summary;
+      const 거리=s.distance>0?(s.distance/1000).toFixed(1):'-';
+      const 시간=s.duration>0?Math.round(s.duration/60000):'-';
+      statsEl.innerHTML=`
+        <div class="stat-box"><div class="s-label">🛣 운행거리</div><div class="s-value">${거리} km</div></div>
+        <div class="stat-box"><div class="s-label">⏱ 운행시간</div><div class="s-value">${시간} 분</div></div>
+        <div class="stat-box"><div class="s-label">⛽ 유류비</div><div class="s-value">${숫자포맷(s.fuelPrice)} 원</div></div>
+        <div class="stat-box"><div class="s-label">🚧 톨비</div><div class="s-value">${숫자포맷(s.tollFare)} 원</div></div>
+      `;
+    } else {
+      statsEl.innerHTML='<span class="msg-err">경로 계산 실패</span>';
+    }
+
+    // 지도
+    그리기(호차명, 경로, 지점들);
+
+    // 시트 저장
+    await 시트저장();
+
+  } catch(e){ console.error(e); }
+  finally { btn.textContent='🔄 코스계산'; btn.disabled=false; }
+}
+
+// ═══ 지도 그리기 ═══
+function 그리기(호차명, 경로, 지점들) {
+  const mapDiv=document.getElementById(`map-${호차명}`);
+
+  if(!지도맵[호차명]) {
+    지도맵[호차명]=new naver.maps.Map(mapDiv,{
+      zoom:10,
+      center:new naver.maps.LatLng(Number(지점들[0].y),Number(지점들[0].x))
+    });
+    지도맵[호차명]._overlays=[];
+  }
+  const map=지도맵[호차명];
+
+  // 기존 오버레이 제거
+  map._overlays.forEach(o=>o.setMap(null));
+  map._overlays=[];
+
+  const addOverlay=o=>{ o.setMap(map); map._overlays.push(o); };
+
+  // 출발 마커
+  addOverlay(new naver.maps.Marker({
+    position:new naver.maps.LatLng(Number(출발지좌표.y),Number(출발지좌표.x)),
+    icon:{
+      content:`<div style="background:#2e7d32;color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:bold;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap">🏁 출발</div>`,
+      anchor:new naver.maps.Point(20,28)
+    }
+  }));
+
+  // 지점 마커
+  지점들.forEach((p,i)=>{
+    addOverlay(new naver.maps.Marker({
+      position:new naver.maps.LatLng(Number(p.y),Number(p.x)),
+      icon:{
+        content:`<div style="background:#1a73e8;color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:bold;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap">${i+1}. ${p.명}</div>`,
+        anchor:new naver.maps.Point(20,28)
+      }
+    }));
+  });
+
+  // 경로선
+  if(경로?.path){
+    addOverlay(new naver.maps.Polyline({
+      path:경로.path.map(p=>new naver.maps.LatLng(p[1],p[0])),
+      strokeColor:'#1a73e8', strokeWeight:4, strokeOpacity:0.8
+    }));
+  }
+
+  // 범위 맞추기
+  const coords=[
+    new naver.maps.LatLng(Number(출발지좌표.y),Number(출발지좌표.x)),
+    ...지점들.map(p=>new naver.maps.LatLng(Number(p.y),Number(p.x)))
+  ];
+  const bounds=new naver.maps.LatLngBounds(coords[0],coords[0]);
+  coords.forEach(c=>bounds.extend(c));
+  map.fitBounds(bounds,{padding:50});
+}
+
+// ═══ 전체 계산 ═══
+async function 전체계산() {
+  if(!출발지좌표){ alert('먼저 출발지 좌표를 검색해주세요!'); return; }
+  const 배치된=호차목록.filter(h=>(호차배치[h]||[]).length>0);
+  if(배치된.length===0){ alert('배치된 지점이 없어요!'); return; }
+  const btn=document.querySelector('.btn-green');
+  btn.textContent='⏳ 계산 중...'; btn.disabled=true;
+  for(const h of 배치된) await 코스계산(h);
+  btn.textContent='🔄 전체계산'; btn.disabled=false;
+}
+
+// ═══ 구글시트 저장 ═══
+async function 시트저장() {
+  const 호차맵={};
+  // 미지정
+  (호차배치['미지정']||[]).forEach(code=>{
+    호차맵[code]={ 호차:'미지정', 순서:'' };
+  });
+  // 각 호차
+  호차목록.forEach(h=>{
+    (호차배치[h]||[]).forEach((code,idx)=>{
+      호차맵[code]={ 호차:h, 순서:idx+1 };
+    });
+  });
+  try {
+    await fetch(APPS_SCRIPT_URL,{method:'POST',
+      body:JSON.stringify({action:'saveHocha', 호차맵})});
+  } catch(e){ console.error('저장 오류:',e); }
+}
+</script>
+</body>
+</html>
