@@ -697,7 +697,8 @@ async function 시트저장(대상호차=null) {
   저장대상.forEach(h=>{
     (호차배치[h]||[]).forEach((item,idx)=>{
       if(!is물류(item.code)){
-        호차맵[item.code]={호차:h, 순서:idx+1};
+        // ⭐ 출발지=0, 다음부터 1,2,3...
+        호차맵[item.code]={ 호차:h, 순서:idx };
       }
     });
   });
@@ -706,15 +707,25 @@ async function 시트저장(대상호차=null) {
   if(대상호차){
     (호차배치['미지정']||[]).forEach(item=>{
       if(!is물류(item.code)&&!호차맵[item.code]){
-        호차맵[item.code]={호차:'미지정', 순서:''};
+        호차맵[item.code]={ 호차:'미지정', 순서:'' };
       }
     });
   }
 
+  console.log('저장 데이터:', JSON.stringify(호차맵));
+
   try {
-    await fetch(APPS_SCRIPT_URL,{method:'POST',
-      body:JSON.stringify({action:'saveHocha', 호차맵})});
-  } catch(e){console.error('저장 오류:',e);}
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'saveHocha', 호차맵 })
+    });
+    const data = await res.json();
+    console.log('저장 결과:', data);
+  } catch(e){
+    console.error('저장 오류:', e);
+  }
 }
 </script>
 </body>
