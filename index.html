@@ -75,13 +75,22 @@
     .row-ctrl { display:flex; align-items:center; gap:4px; padding-top:4px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
     .row-ctrl select { padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:11px; font-family:맑은고딕,sans-serif; max-width:70px; }
 
-    .result-area { display:none; border-top:1px solid #f0f0f0; padding:8px 12px; }
+    /* ── 결과 영역 ── */
+    .result-header { display:flex; align-items:center; justify-content:space-between; padding:6px 12px; background:#f8f9fa; border-top:1px solid #f0f0f0; cursor:pointer; user-select:none; }
+    .result-header:hover { background:#e8f0fe; }
+    .result-header .result-summary { font-size:12px; color:#555; display:flex; gap:12px; flex-wrap:wrap; }
+    .result-header .result-summary span { font-weight:bold; color:#1a73e8; }
+    .result-toggle { font-size:12px; color:#888; flex-shrink:0; }
+    .result-body { display:none; padding:8px 12px; border-top:1px solid #f0f0f0; }
+    .result-body.펼침 { display:block; }
+
     .stats-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
     .stat-box { background:#f8f9fa; border-radius:8px; padding:6px 10px; text-align:center; flex:1; min-width:70px; }
     .stat-box .s-label { font-size:10px; color:#888; }
     .stat-box .s-value { font-size:14px; font-weight:bold; color:#1a73e8; }
     .map-box { width:100%; height:260px; border-radius:8px; }
 
+    /* ── 견적 패널 ── */
     .견적패널 { background:white; border-radius:12px; padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:12px; }
     .견적패널 h3 { font-size:14px; color:#333; margin-bottom:12px; }
     .단가그리드 { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
@@ -110,7 +119,7 @@
       .상단바 h1 { font-size:15px; }
       .뱃지 { display:none; }
       .row-main { flex-wrap:wrap; }
-      .row-ctrl { width:100%; justify-content:flex-start; padding-top:4px; padding-bottom:4px; }
+      .row-ctrl { width:100%; justify-content:flex-start; padding-bottom:4px; }
       .chip-zone { min-width:0; width:100%; }
       .stat-box { min-width:60px; }
       .단가그룹 input { width:85px; }
@@ -219,9 +228,9 @@
 <script>
 // ═══ 설정 ═══
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygNvG1fGnUMpBo6VI-Qrmx4ynjlo1wHQLNJacKBExIPR8_hR7mhXii2X7Pc84UxxNRWQ/exec';
-const 지점시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=0&single=true&output=csv';
-const 계정시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTs6k1Ky8Hdnrl2U5A242Vg6ZqBaQSrLGkDr2xf_yMuMflYc-dD_2-v-2wRmIsip32W087DXCx4ZRzu/pub?gid=1375354052&single=true&output=csv';
-const 경로시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=1187779102&single=true&output=csv';
+const 지점시트URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=0&single=true&output=csv';
+const 계정시트URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTs6k1Ky8Hdnrl2U5A242Vg6ZqBaQSrLGkDr2xf_yMuMflYc-dD_2-v-2wRmIsip32W087DXCx4ZRzu/pub?gid=1375354052&single=true&output=csv';
+const 경로시트URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=1187779102&single=true&output=csv';
 const 호차목록 = ['1호차','2호차','3호차','4호차','5호차','6호차','7호차','8호차','9호차','10호차'];
 const 연비맵 = { '1톤':10, '2.5톤':8, '5톤':6, '11톤':4.5, '25톤':3.5 };
 
@@ -230,9 +239,9 @@ let 계정목록 = [];
 let 현재사용자 = null;
 let 전체지점 = [];
 let 현재지점 = [];
-let 호차배치 = {};   // { '미지정':[{uid,code}], '물류':['code'], '1호차':[{uid,code}] }
-let 호차설정 = {};   // { '1호차': { 연료:'디젤', 톤수:'5톤' } }
-let 호차경로DB = []; // 호차경로 시트 전체 데이터
+let 호차배치 = {};
+let 호차설정 = {};
+let 호차경로DB = [];
 let 지도맵 = {};
 let draggedEl = null;
 let dragInfo = null;
@@ -267,6 +276,7 @@ function CSV파싱(text) {
 function 숫자포맷(n) { if(n==null||n===''||isNaN(Number(n))) return '-'; return Number(n).toLocaleString(); }
 function 지점조회(code) { return 전체지점.find(p=>p.코드===code); }
 function is물류(code)   { return 지점조회(code)?.구분==='물류'; }
+function 좌표유효(p)   { return p && p.x && p.y && !isNaN(Number(p.x)) && !isNaN(Number(p.y)); }
 
 // ═══ 로그인 ═══
 fetch(계정시트URL).then(r=>r.text()).then(csv=>{
@@ -287,7 +297,6 @@ function 로그인() {
   document.getElementById('사용자뱃지').textContent=`${계정.id} (${계정.권한==='전체'?'마스터':계정.권한})`;
   초기화();
 }
-
 function 로그아웃() {
   현재사용자=null;
   document.getElementById('대시보드').style.display='none';
@@ -318,7 +327,6 @@ async function 비번변경(){
 
 // ═══ 초기화 ═══
 async function 초기화() {
-  // 지점좌표 + 호차경로 동시 로드
   if(전체지점.length===0){
     const [지점csv, 경로csv] = await Promise.all([
       fetch(지점시트URL).then(r=>r.text()),
@@ -328,16 +336,12 @@ async function 초기화() {
       if(!v[3]) return;
       전체지점.push({
         관할코드:v[0]?.trim(), 관할명:v[1]?.trim(),
-        호차:(v[2]||'미지정').trim(),
         코드:v[3].trim(), 명:v[4]?.trim()||v[3].trim(),
-        주소:((v[5]||'')+' '+(v[6]||'')).trim(),
         x:v[7]?.trim(), y:v[8]?.trim(),
         물동량:v[9]?.trim()||'',
-        순서:parseInt(v[10])||0,
         구분:(v[11]?.trim()||'지점')
       });
     });
-    // 호차경로 시트: A=관할코드, B=관할명, C=호차명, D=경로
     CSV파싱(경로csv).slice(1).forEach(v=>{
       if(!v[2]) return;
       호차경로DB.push({
@@ -361,53 +365,29 @@ function 관할변경() {
   현재지점=전체지점.filter(p=>p.관할명===관할);
   배치초기화();
   코스결과캐시={};
-
-  // 관할코드 찾기
   const 관할코드=현재지점[0]?.관할코드||'';
 
   // 물류 팔레트
   현재지점.filter(p=>p.구분==='물류').forEach(p=>호차배치['물류'].push(p.코드));
 
-  // ⭐ 호차경로 시트에서 경로 복원 (중복 포함)
-  const 저장된경로 = 호차경로DB.filter(r=>r.관할코드===관할코드);
+  // ⭐ 호차경로 시트 기반으로만 복원
+  const 저장된경로=호차경로DB.filter(r=>r.관할코드===관할코드);
+  const 배치된일반코드=new Set();
 
-  if(저장된경로.length>0) {
-    // 호차경로 시트 기반 복원
-    const 배치된코드 = new Set();
-
+  if(저장된경로.length>0){
     저장된경로.forEach(r=>{
-      if(!r.경로||!호차배치[r.호차명]) return;
-      const 코드들=r.경로.split('|').map(s=>s.trim()).filter(Boolean);
+      if(!호차배치[r.호차명]) return;
+      const 코드들=r.경로?r.경로.split('|').map(s=>s.trim()).filter(Boolean):[];
       호차배치[r.호차명]=코드들.map(code=>({uid:genUID(),code}));
-      // 일반 지점만 배치된 것으로 표시
-      코드들.forEach(code=>{ if(!is물류(code)) 배치된코드.add(code); });
+      코드들.forEach(code=>{ if(!is물류(code)) 배치된일반코드.add(code); });
     });
-
     // 호차경로에 없는 일반 지점 → 미지정
-    현재지점.filter(p=>p.구분!=='물류').forEach(p=>{
-      if(!배치된코드.has(p.코드)){
-        호차배치['미지정'].push({uid:genUID(),code:p.코드});
-      }
-    });
-
+    현재지점.filter(p=>p.구분!=='물류'&&!배치된일반코드.has(p.코드))
+      .forEach(p=>호차배치['미지정'].push({uid:genUID(),code:p.코드}));
   } else {
-    // 호차경로 시트에 데이터 없으면 지점좌표 시트 기반 복원
-    const 호차별임시={};
-    현재지점.filter(p=>p.구분!=='물류').forEach(p=>{
-      const h=(p.호차||'미지정').trim();
-      if(h==='미지정'||!호차배치[h]){
-        호차배치['미지정'].push({uid:genUID(),code:p.코드});
-      } else {
-        if(!호차별임시[h]) 호차별임시[h]=[];
-        호차별임시[h].push({순서:p.순서,uid:genUID(),code:p.코드});
-      }
-    });
-    호차목록.forEach(h=>{
-      if(호차별임시[h]){
-        호차별임시[h].sort((a,b)=>a.순서-b.순서);
-        호차배치[h]=호차별임시[h].map(o=>({uid:o.uid,code:o.code}));
-      }
-    });
+    // 호차경로 없으면 전부 미지정
+    현재지점.filter(p=>p.구분!=='물류')
+      .forEach(p=>호차배치['미지정'].push({uid:genUID(),code:p.코드}));
   }
 
   지도맵={};
@@ -472,13 +452,33 @@ function makeRow(행명) {
     ${ctrlHTML}`;
   wrap.appendChild(main);
 
+  // ⭐ 결과 영역 — 접기 헤더 + 바디
   if(isHo){
-    const result=document.createElement('div');
-    result.className='result-area'; result.id=`result-${행명}`;
-    result.innerHTML=`<div class="stats-row" id="stats-${행명}"></div><div class="map-box" id="map-${행명}"></div>`;
-    wrap.appendChild(result);
+    const resultHeader=document.createElement('div');
+    resultHeader.className='result-header';
+    resultHeader.id=`result-header-${행명}`;
+    resultHeader.style.display='none';
+    resultHeader.onclick=()=>결과토글(행명);
+    resultHeader.innerHTML=`
+      <div class="result-summary" id="result-summary-${행명}"></div>
+      <div class="result-toggle" id="result-toggle-${행명}">▲ 접기</div>`;
+    wrap.appendChild(resultHeader);
+
+    const resultBody=document.createElement('div');
+    resultBody.className='result-body 펼침';
+    resultBody.id=`result-body-${행명}`;
+    resultBody.innerHTML=`<div class="stats-row" id="stats-${행명}"></div><div class="map-box" id="map-${행명}"></div>`;
+    wrap.appendChild(resultBody);
   }
   return wrap;
+}
+
+function 결과토글(h){
+  const body=document.getElementById(`result-body-${h}`);
+  const toggle=document.getElementById(`result-toggle-${h}`);
+  if(!body) return;
+  const 펼침=body.classList.toggle('펼침');
+  toggle.textContent=펼침?'▲ 접기':'▼ 펼치기';
 }
 
 function 설정변경(h,k,v){ if(!호차설정[h]) 호차설정[h]={연료:'디젤',톤수:'5톤'}; 호차설정[h][k]=v; }
@@ -491,8 +491,11 @@ function 호차초기화(h){
   });
   호차배치[h]=[];
   코스결과캐시[h]=null;
-  const r=document.getElementById(`result-${h}`);
-  if(r) r.style.display='none';
+  const rh=document.getElementById(`result-header-${h}`);
+  const rb=document.getElementById(`result-body-${h}`);
+  if(rh) rh.style.display='none';
+  if(rb){ rb.innerHTML=`<div class="stats-row" id="stats-${h}"></div><div class="map-box" id="map-${h}"></div>`; rb.classList.add('펼침'); }
+  if(지도맵[h]){ try{(지도맵[h]._overlays||[]).forEach(o=>o.setMap(null));}catch(e){} delete 지도맵[h]; }
   renderGrid();
   시트저장([h]);
 }
@@ -595,21 +598,37 @@ function getAfterEl(container,x){
 // ═══ 코스 계산 ═══
 async function 코스계산(h){
   const items=호차배치[h]||[];
-  const 지점들=items.map(item=>지점조회(item.code)).filter(Boolean);
-  if(지점들.length<2){alert(`${h}에 최소 2개 지점이 필요해요!\n(첫 번째 칩이 출발지입니다)`);return;}
+
+  // ⭐ 좌표가 유효한 지점만 필터 (물류 포함)
+  const 지점들=items.map(item=>지점조회(item.code)).filter(p=>좌표유효(p));
+
+  if(지점들.length<2){
+    alert(`${h}에 좌표가 있는 지점이 최소 2개 필요해요!\n(물류 지점에 좌표가 있는지 확인해주세요)`);
+    return;
+  }
+
   const btn=document.getElementById(`btn-${h}`);
   btn.textContent='⏳'; btn.disabled=true;
   const s=호차설정[h]||{연료:'디젤',톤수:'5톤'};
+
   try {
     const start=`${지점들[0].x},${지점들[0].y}`;
     const goal=`${지점들.at(-1).x},${지점들.at(-1).y}`;
-    const waypoints=지점들.length>2?지점들.slice(1,-1).map(p=>`${p.x},${p.y}`).join('|'):undefined;
-    const res=await fetch('/api/directions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start,goal,waypoints})});
+    const waypoints=지점들.length>2
+      ?지점들.slice(1,-1).map(p=>`${p.x},${p.y}`).join('|')
+      :undefined;
+
+    const res=await fetch('/api/directions',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({start,goal,waypoints})});
     const data=await res.json();
     const 경로=data.route?.trafast?.[0];
-    const resultEl=document.getElementById(`result-${h}`);
+
+    // ⭐ 결과 헤더 표시
+    const rh=document.getElementById(`result-header-${h}`);
     const statsEl=document.getElementById(`stats-${h}`);
-    resultEl.style.display='block';
+    const summaryEl=document.getElementById(`result-summary-${h}`);
+
     if(경로?.summary){
       const sm=경로.summary;
       const 거리km=sm.distance>0?(sm.distance/1000):0;
@@ -619,6 +638,17 @@ async function 코스계산(h){
       const 계산유류비=거리km>0?Math.round(거리km/연비*유가):0;
       const 톨비=sm.tollFare||0;
       코스결과캐시[h]={거리km,시간분,유류비:계산유류비,톨비};
+
+      // 헤더 요약
+      summaryEl.innerHTML=`
+        <span>${s.톤수}/${s.연료}</span>
+        <span>🛣 ${거리km.toFixed(1)}km</span>
+        <span>⏱ ${시간분}분</span>
+        <span>⛽ ${숫자포맷(계산유류비)}원</span>
+        <span>🚧 ${숫자포맷(톨비)}원</span>`;
+      if(rh) rh.style.display='flex';
+
+      // 바디 상세
       statsEl.innerHTML=`
         <div class="stat-box"><div class="s-label">🚗 차량</div><div class="s-value" style="font-size:12px">${s.톤수}/${s.연료}</div></div>
         <div class="stat-box"><div class="s-label">🛣 거리</div><div class="s-value">${거리km.toFixed(1)}km</div></div>
@@ -627,9 +657,12 @@ async function 코스계산(h){
         <div class="stat-box"><div class="s-label">🚧 톨비</div><div class="s-value">${숫자포맷(톨비)}원</div></div>`;
     } else {
       statsEl.innerHTML='<span class="msg-err">❌ 경로 계산 실패</span>';
+      if(rh){ summaryEl.innerHTML='<span style="color:#e53935">❌ 계산 실패</span>'; rh.style.display='flex'; }
     }
+
     그리기(h,경로,지점들);
     await 시트저장([h]);
+
   } catch(err){console.error(err);}
   finally{btn.textContent='🔄';btn.disabled=false;}
 }
@@ -648,10 +681,16 @@ function 그리기(h,경로,지점들){
   지점들.forEach((p,i)=>{
     add(new naver.maps.Marker({
       position:new naver.maps.LatLng(Number(p.y),Number(p.x)),
-      icon:{content:`<div style="background:${i===0?'#2e7d32':'#1a73e8'};color:white;border-radius:8px;padding:3px 7px;font-size:11px;font-weight:bold;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap">${i===0?'🏁 출발: ':''}${i>0?i+'. ':''}${p.명}</div>`,anchor:new naver.maps.Point(20,24)}
+      icon:{
+        content:`<div style="background:${i===0?'#2e7d32':'#1a73e8'};color:white;border-radius:8px;padding:3px 7px;font-size:11px;font-weight:bold;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);white-space:nowrap">${i===0?'🏁 출발: ':''}${i>0?i+'. ':''}${p.명}</div>`,
+        anchor:new naver.maps.Point(20,24)
+      }
     }));
   });
-  if(경로?.path) add(new naver.maps.Polyline({path:경로.path.map(p=>new naver.maps.LatLng(p[1],p[0])),strokeColor:'#1a73e8',strokeWeight:4,strokeOpacity:0.8}));
+  if(경로?.path) add(new naver.maps.Polyline({
+    path:경로.path.map(p=>new naver.maps.LatLng(p[1],p[0])),
+    strokeColor:'#1a73e8',strokeWeight:4,strokeOpacity:0.8
+  }));
   const coords=지점들.map(p=>new naver.maps.LatLng(Number(p.y),Number(p.x)));
   const bounds=new naver.maps.LatLngBounds(coords[0],coords[0]);
   coords.forEach(c=>bounds.extend(c));
@@ -660,8 +699,11 @@ function 그리기(h,경로,지점들){
 
 // ═══ 전체계산 ═══
 async function 전체계산(){
-  const 배치된=호차목록.filter(h=>(호차배치[h]||[]).length>=2);
-  if(배치된.length===0){alert('지점이 2개 이상 배치된 호차가 없어요!');return;}
+  const 배치된=호차목록.filter(h=>{
+    const 지점들=(호차배치[h]||[]).map(item=>지점조회(item.code)).filter(좌표유효);
+    return 지점들.length>=2;
+  });
+  if(배치된.length===0){alert('좌표가 있는 지점이 2개 이상 배치된 호차가 없어요!');return;}
   const btn=document.querySelector('.btn-green');
   btn.textContent='⏳...'; btn.disabled=true;
   for(const h of 배치된) await 코스계산(h);
@@ -669,45 +711,24 @@ async function 전체계산(){
 }
 
 // ═══ 구글시트 저장 ═══
+// ⭐ 호차경로 시트만 저장 (지점좌표 C/K열 저장 제거)
 async function 시트저장(대상호차=null){
   const 관할=document.getElementById('sel관할').value;
   const 관할코드=현재지점[0]?.관할코드||'';
 
-  // ① 호차경로맵 — 중복 포함 전체 경로
   const 호차경로맵={};
   (대상호차||호차목록).forEach(h=>{
     const codes=(호차배치[h]||[]).map(item=>item.code);
-    if(codes.length>0){
-      호차경로맵[`${관할코드}_${h}`]={
-        관할코드, 관할명:관할, 호차명:h, 경로:codes.join('|')
-      };
-    } else {
-      // 비어있으면 빈 경로로 저장
-      호차경로맵[`${관할코드}_${h}`]={
-        관할코드, 관할명:관할, 호차명:h, 경로:''
-      };
-    }
-  });
-
-  // ② 호차맵 — 일반 지점만 (지점좌표 시트 C/K열)
-  const 호차맵={};
-  (대상호차||호차목록).forEach(h=>{
-    (호차배치[h]||[]).forEach((item,idx)=>{
-      if(!is물류(item.code)){
-        호차맵[item.code]={호차:h, 순서:idx};
-      }
-    });
-  });
-  // 미지정 지점도 반영
-  (호차배치['미지정']||[]).forEach(item=>{
-    if(!is물류(item.code)&&!호차맵[item.code]){
-      호차맵[item.code]={호차:'미지정', 순서:''};
-    }
+    호차경로맵[`${관할코드}_${h}`]={
+      관할코드, 관할명:관할, 호차명:h,
+      경로:codes.join('|')  // ⭐ 물류 포함 전체 경로
+    };
   });
 
   try {
-    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({action:'saveHocha', 호차경로맵, 호차맵})});
+    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',redirect:'follow',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'saveHocha', 호차경로맵})});
     const data=await res.json();
     console.log('저장:', data);
   } catch(e){console.error('저장 오류:',e);}
@@ -720,23 +741,23 @@ function 견적패널토글(){
 }
 
 function 견적계산(){
-  const 인건비단가   = Number(document.getElementById('단가_인건비').value)||0;
-  const 감가단가맵   = {
+  const 인건비단가=Number(document.getElementById('단가_인건비').value)||0;
+  const 감가단가맵={
     '1톤':  Number(document.getElementById('단가_감가_1톤').value)||0,
     '2.5톤':Number(document.getElementById('단가_감가_2.5톤').value)||0,
     '5톤':  Number(document.getElementById('단가_감가_5톤').value)||0,
     '11톤': Number(document.getElementById('단가_감가_11톤').value)||0,
     '25톤': Number(document.getElementById('단가_감가_25톤').value)||0,
   };
-  const 기타율     = Number(document.getElementById('단가_기타').value)/100||0;
-  const 이윤율     = Number(document.getElementById('단가_이윤').value)/100||0;
-  const 경유지단가 = Number(document.getElementById('단가_경유지').value)||0;
-  const 운행일수   = Number(document.getElementById('단가_운행일수').value)||26;
-  const 현재유가맵 = {
-    '디젤':   Number(document.getElementById('유가_디젤').value)||1650,
-    '휘발유': Number(document.getElementById('유가_휘발유').value)||1800,
-    'LPG':    Number(document.getElementById('유가_LPG').value)||950,
-    'CNG':    Number(document.getElementById('유가_CNG').value)||700,
+  const 기타율=Number(document.getElementById('단가_기타').value)/100||0;
+  const 이윤율=Number(document.getElementById('단가_이윤').value)/100||0;
+  const 경유지단가=Number(document.getElementById('단가_경유지').value)||0;
+  const 운행일수=Number(document.getElementById('단가_운행일수').value)||26;
+  const 현재유가맵={
+    '디젤':  Number(document.getElementById('유가_디젤').value)||1650,
+    '휘발유':Number(document.getElementById('유가_휘발유').value)||1800,
+    'LPG':   Number(document.getElementById('유가_LPG').value)||950,
+    'CNG':   Number(document.getElementById('유가_CNG').value)||700,
   };
 
   const 대상=호차목록.filter(h=>코스결과캐시[h]);
@@ -753,7 +774,9 @@ function 견적계산(){
     const 연비=연비맵[s.톤수]||6;
     const 리터당=현재유가맵[s.연료]||1650;
     const 재계산유류비=c.거리km>0?Math.round(c.거리km/연비*리터당):0;
-    const 경유지수=Math.max(0,(호차배치[h]||[]).length-1);
+    // ⭐ 경유지수 = 좌표 있는 지점 중 출발지 제외
+    const 좌표있는수=(호차배치[h]||[]).map(item=>지점조회(item.code)).filter(좌표유효).length;
+    const 경유지수=Math.max(0,좌표있는수-1);
     const 경유지수당금액=경유지수*경유지단가;
     const 인건비=Math.round((c.시간분/60)*인건비단가);
     const 차량감가=Math.round(c.거리km*(감가단가맵[s.톤수]||0));
@@ -769,13 +792,13 @@ function 견적계산(){
       경유지수,경유지수당금액,소계,기타경비,원가합계,이윤:이윤금액,도급비,월도급비};
     견적데이터.push(row);
 
-    총.거리+=c.거리km;         총.시간+=c.시간분;
-    총.유류비+=재계산유류비;    총.톨비+=c.톨비;
-    총.인건비+=인건비;          총.감가+=차량감가;
-    총.경유지수+=경유지수;      총.경유지수당+=경유지수당금액;
-    총.소계+=소계;              총.기타+=기타경비;
-    총.원가+=원가합계;          총.이윤+=이윤금액;
-    총.도급비+=도급비;          총.월도급비+=월도급비;
+    총.거리+=c.거리km; 총.시간+=c.시간분;
+    총.유류비+=재계산유류비; 총.톨비+=c.톨비;
+    총.인건비+=인건비; 총.감가+=차량감가;
+    총.경유지수+=경유지수; 총.경유지수당+=경유지수당금액;
+    총.소계+=소계; 총.기타+=기타경비;
+    총.원가+=원가합계; 총.이윤+=이윤금액;
+    총.도급비+=도급비; 총.월도급비+=월도급비;
 
     tbody.innerHTML+=`<tr>
       <td>${h}</td><td>${s.톤수}</td><td>${s.연료}</td>
