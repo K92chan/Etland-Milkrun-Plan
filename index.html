@@ -597,74 +597,110 @@ function getAfterEl(container,x){
 
 // ═══ 코스 계산 ═══
 async function 코스계산(h){
-  const items=호차배치[h]||[];
-
-  // ⭐ 좌표가 유효한 지점만 필터 (물류 포함)
-  const 지점들=items.map(item=>지점조회(item.code)).filter(p=>좌표유효(p));
-
-  if(지점들.length<2){
-    alert(`${h}에 좌표가 있는 지점이 최소 2개 필요해요!\n(물류 지점에 좌표가 있는지 확인해주세요)`);
+  const items = 호차배치[h] || [];
+  if(items.length < 2){
+    alert(`${h}에 최소 2개 지점이 필요해요!`);
     return;
   }
 
-  const btn=document.getElementById(`btn-${h}`);
-  btn.textContent='⏳'; btn.disabled=true;
-  const s=호차설정[h]||{연료:'디젤',톤수:'5톤'};
+  // ⭐ 모든 지점 조회 (물류 포함) — 좌표 없는 지점만 제외
+  const 지점들 = items
+    .map(item => 지점조회(item.code))
+    .filter(p => p && p.x && p.y &&
+      String(p.x).trim() !== '' && String(p.y).trim() !== '' &&
+      !isNaN(parseFloat(p.x)) && !isNaN(parseFloat(p.y))
+    );
+
+  console.log(`[${h}] 전체 칩: ${items.length}개, 좌표 유효: ${지점들.length}개`);
+  items.forEach(item => {
+    const p = 지점조회(item.code);
+    console.log(`  - 코드:${item.code} 명:${p?.명} x:${p?.x} y:${p?.y} 구분:${p?.구분}`);
+  });
+
+  if(지점들.length < 2){
+    alert(`${h}에 좌표가 있는 지점이 최소 2개 필요해요!\n\nF12 콘솔에서 좌표 확인해주세요.`);
+    return;
+  }
+
+  const btn = document.getElementById(`btn-${h}`);
+  btn.textContent = '⏳'; btn.disabled = true;
+  const s = 호차설정[h] || {연료:'디젤', 톤수:'5톤'};
 
   try {
-    const start=`${지점들[0].x},${지점들[0].y}`;
-    const goal=`${지점들.at(-1).x},${지점들.at(-1).y}`;
-    const waypoints=지점들.length>2
-      ?지점들.slice(1,-1).map(p=>`${p.x},${p.y}`).join('|')
-      :undefined;
+    const start = `${지점들[0].x},${지점들[0].y}`;
+    const last  = 지점들.at(-1);
+    const goal  = `${last.x},${last.y}`;
 
-    const res=await fetch('/api/directions',{method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({start,goal,waypoints})});
-    const data=await res.json();
-    const 경로=data.route?.trafast?.[0];
+    // ⭐ 출발=도착인 경우 (순환 경로) — 마지막 직전 지점을 goal로
+    let 실제goal = goal;
+    let 실제waypoints = [];
 
-    // ⭐ 결과 헤더 표시
-    const rh=document.getElementById(`result-header-${h}`);
-    const statsEl=document.getElementById(`stats-${h}`);
-    const summaryEl=document.getElementById(`result-summary-${h}`);
+    if(start === goal && 지점들.length >= 3){
+      // 순환: 출발 → ... → 끝에서둘째 → 출발
+      실제waypoints = 지점들.slice(1, -1).map(p=>`${p.x},${p.y}`);
+    } else if(start === goal && 지점들.length === 2){
+      // 출발=도착이고 2개뿐이면 계산 불가
+      alert(`${h}: 출발지와 도착지가 같고 경유지가 없어서 계산할 수 없어요.`);
+      return;
+    } else {
+      실제waypoints = 지점들.slice(1, -1).map(p=>`${p.x},${p.y}`);
+    }
+
+    const body = {
+      start,
+      goal: 실제goal,
+      waypoints: 실제waypoints.length > 0 ? 실제waypoints.join('|') : undefined
+    };
+    console.log(`[${h}] API 요청:`, body);
+
+    const res = await fetch('/api/directions', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    console.log(`[${h}] API 응답 code:`, data.code, data.message);
+
+    const 경로 = data.route?.trafast?.[0];
+    const rh       = document.getElementById(`result-header-${h}`);
+    const statsEl  = document.getElementById(`stats-${h}`);
+    const summaryEl= document.getElementById(`result-summary-${h}`);
 
     if(경로?.summary){
-      const sm=경로.summary;
-      const 거리km=sm.distance>0?(sm.distance/1000):0;
-      const 시간분=sm.duration>0?Math.round(sm.duration/60000):0;
-      const 연비=연비맵[s.톤수]||6;
-      const 유가=Number(document.getElementById('유가_'+s.연료)?.value)||1650;
-      const 계산유류비=거리km>0?Math.round(거리km/연비*유가):0;
-      const 톨비=sm.tollFare||0;
-      코스결과캐시[h]={거리km,시간분,유류비:계산유류비,톨비};
+      const sm = 경로.summary;
+      const 거리km  = sm.distance > 0 ? (sm.distance / 1000) : 0;
+      const 시간분  = sm.duration > 0 ? Math.round(sm.duration / 60000) : 0;
+      const 연비    = 연비맵[s.톤수] || 6;
+      const 유가    = Number(document.getElementById('유가_'+s.연료)?.value) || 1650;
+      const 계산유류비 = 거리km > 0 ? Math.round(거리km / 연비 * 유가) : 0;
+      const 톨비    = sm.tollFare || 0;
 
-      // 헤더 요약
-      summaryEl.innerHTML=`
+      코스결과캐시[h] = {거리km, 시간분, 유류비:계산유류비, 톨비};
+
+      summaryEl.innerHTML = `
         <span>${s.톤수}/${s.연료}</span>
         <span>🛣 ${거리km.toFixed(1)}km</span>
         <span>⏱ ${시간분}분</span>
         <span>⛽ ${숫자포맷(계산유류비)}원</span>
         <span>🚧 ${숫자포맷(톨비)}원</span>`;
-      if(rh) rh.style.display='flex';
+      if(rh) rh.style.display = 'flex';
 
-      // 바디 상세
-      statsEl.innerHTML=`
+      statsEl.innerHTML = `
         <div class="stat-box"><div class="s-label">🚗 차량</div><div class="s-value" style="font-size:12px">${s.톤수}/${s.연료}</div></div>
         <div class="stat-box"><div class="s-label">🛣 거리</div><div class="s-value">${거리km.toFixed(1)}km</div></div>
         <div class="stat-box"><div class="s-label">⏱ 시간</div><div class="s-value">${시간분}분</div></div>
         <div class="stat-box"><div class="s-label">⛽ 유류비</div><div class="s-value">${숫자포맷(계산유류비)}원</div></div>
         <div class="stat-box"><div class="s-label">🚧 톨비</div><div class="s-value">${숫자포맷(톨비)}원</div></div>`;
     } else {
-      statsEl.innerHTML='<span class="msg-err">❌ 경로 계산 실패</span>';
+      statsEl.innerHTML = `<span class="msg-err">❌ 경로 계산 실패 (code:${data.code})</span>`;
       if(rh){ summaryEl.innerHTML='<span style="color:#e53935">❌ 계산 실패</span>'; rh.style.display='flex'; }
     }
 
-    그리기(h,경로,지점들);
+    그리기(h, 경로, 지점들);
     await 시트저장([h]);
 
-  } catch(err){console.error(err);}
-  finally{btn.textContent='🔄';btn.disabled=false;}
+  } catch(err){ console.error(err); }
+  finally{ btn.textContent='🔄'; btn.disabled=false; }
 }
 
 // ═══ 지도 그리기 ═══
