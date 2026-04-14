@@ -206,6 +206,13 @@
       <div class="단가그룹"><label>💹 이윤율(%)</label><input type="number" id="단가_이윤" value="10" step="0.5" min="0" max="100"></div>
       <div class="단가구분선"></div>
       <div class="단가그룹"><label>📍 경유지수당(원/개소)</label><input type="number" id="단가_경유지" value="0" step="100"></div>
+      <div class="단가구분선"></div>
+      <div class="단가그룹"><label>📅 월 운행일수(일)</label><input type="number" id="단가_운행일수" value="26" step="1" min="1" max="31"></div>
+      <div class="단가구분선"></div>
+      <div class="단가그룹"><label>⛽ 디젤 단가(원/L)</label><input type="number" id="유가_디젤" value="1650" step="10"></div>
+      <div class="단가그룹"><label>⛽ 휘발유 단가(원/L)</label><input type="number" id="유가_휘발유" value="1800" step="10"></div>
+      <div class="단가그룹"><label>⛽ LPG 단가(원/L)</label><input type="number" id="유가_LPG" value="950" step="10"></div>
+      <div class="단가그룹"><label>⛽ CNG 단가(원/L)</label><input type="number" id="유가_CNG" value="700" step="10"></div>
     </div>
     <div class="견적버튼묶음">
       <button class="btn btn-blue" onclick="견적계산()">💰 견적 계산</button>
@@ -219,7 +226,7 @@
             <th>거리(km)</th><th>시간(분)</th>
             <th>유류비</th><th>톨비</th><th>인건비</th><th>차량감가</th>
             <th>경유지수</th><th>경유지수당</th>
-            <th>소계</th><th>기타경비</th><th>원가합계</th><th>이윤</th><th>도급비</th>
+            <th>소계</th><th>기타경비</th><th>원가합계</th><th>이윤</th><th>도급비</th><th>월 도급비</th>
           </tr>
         </thead>
         <tbody id="견적테이블바디"></tbody>
@@ -677,16 +684,26 @@ function 견적패널토글(){
 }
 
 function 견적계산(){
-  const 인건비단가=Number(document.getElementById('단가_인건비').value)||0;
-  const 감가단가맵={
+  const 인건비단가   = Number(document.getElementById('단가_인건비').value)||0;
+  const 감가단가맵   = {
     '1톤':  Number(document.getElementById('단가_감가_1톤').value)||0,
     '2.5톤':Number(document.getElementById('단가_감가_2.5톤').value)||0,
     '5톤':  Number(document.getElementById('단가_감가_5톤').value)||0,
     '11톤': Number(document.getElementById('단가_감가_11톤').value)||0,
     '25톤': Number(document.getElementById('단가_감가_25톤').value)||0,
   };
-  const 기타율=Number(document.getElementById('단가_기타').value)/100||0;
-  const 이윤율=Number(document.getElementById('단가_이윤').value)/100||0;
+  const 기타율       = Number(document.getElementById('단가_기타').value)/100||0;
+  const 이윤율       = Number(document.getElementById('단가_이윤').value)/100||0;
+  const 경유지단가   = Number(document.getElementById('단가_경유지').value)||0;
+  const 운행일수     = Number(document.getElementById('단가_운행일수').value)||26;
+
+  // ⭐ 유가 입력값으로 덮어쓰기
+  const 현재유가맵 = {
+    '디젤':   Number(document.getElementById('유가_디젤').value)||1650,
+    '휘발유': Number(document.getElementById('유가_휘발유').value)||1800,
+    'LPG':    Number(document.getElementById('유가_LPG').value)||950,
+    'CNG':    Number(document.getElementById('유가_CNG').value)||700,
+  };
 
   const 대상=호차목록.filter(h=>코스결과캐시[h]);
   if(대상.length===0){alert('먼저 코스계산을 실행해주세요!');return;}
@@ -694,48 +711,56 @@ function 견적계산(){
   견적데이터=[];
   const tbody=document.getElementById('견적테이블바디');
   tbody.innerHTML='';
-  let 총={거리:0,시간:0,유류비:0,톨비:0,인건비:0,감가:0,경유지수:0,경유지수당:0,소계:0,기타:0,원가:0,이윤:0,도급비:0};
+  let 총={거리:0,시간:0,유류비:0,톨비:0,인건비:0,감가:0,
+          경유지수:0,경유지수당:0,소계:0,기타:0,원가:0,이윤:0,도급비:0,월도급비:0};
 
-대상.forEach(h=>{
-  const c=코스결과캐시[h];
-  const s=호차설정[h]||{연료:'디젤',톤수:'5톤'};
-  const 경유지단가=Number(document.getElementById('단가_경유지').value)||0;
+  대상.forEach(h=>{
+    const c     = 코스결과캐시[h];
+    const s     = 호차설정[h]||{연료:'디젤',톤수:'5톤'};
 
-  // 출발지 제외한 경유지 수
-  const 경유지수=Math.max(0,(호차배치[h]||[]).length-1);
-  const 경유지수당금액=경유지수*경유지단가;
+    // ⭐ 유류비 재계산 (입력된 유가 반영)
+    const 연비  = 연비맵[s.톤수]||6;
+    const 리터당 = 현재유가맵[s.연료]||1650;
+    const 재계산유류비 = c.거리km>0 ? Math.round(c.거리km/연비*리터당) : 0;
 
-  const 인건비=Math.round((c.시간분/60)*인건비단가);
-  const 차량감가=Math.round(c.거리km*(감가단가맵[s.톤수]||0));
-  const 소계=c.유류비+c.톨비+인건비+차량감가+경유지수당금액;
-  const 기타경비=Math.round(소계*기타율);
-  const 원가합계=소계+기타경비;
-  const 이윤금액=Math.round(원가합계*이윤율);
-  const 도급비=원가합계+이윤금액;
+    const 경유지수       = Math.max(0,(호차배치[h]||[]).length-1);
+    const 경유지수당금액 = 경유지수*경유지단가;
+    const 인건비         = Math.round((c.시간분/60)*인건비단가);
+    const 차량감가       = Math.round(c.거리km*(감가단가맵[s.톤수]||0));
+    const 소계           = 재계산유류비+c.톨비+인건비+차량감가+경유지수당금액;
+    const 기타경비       = Math.round(소계*기타율);
+    const 원가합계       = 소계+기타경비;
+    const 이윤금액       = Math.round(원가합계*이윤율);
+    const 도급비         = 원가합계+이윤금액;
+    const 월도급비       = 도급비*운행일수;
 
-  const row={호차:h,톤수:s.톤수,연료:s.연료,거리:c.거리km,시간:c.시간분,
-    유류비:c.유류비,톨비:c.톨비,인건비,차량감가,
-    경유지수,경유지수당금액,
-    소계,기타경비,원가합계,이윤:이윤금액,도급비};
-  견적데이터.push(row);
+    const row={호차:h, 톤수:s.톤수, 연료:s.연료,
+      거리:c.거리km, 시간:c.시간분,
+      유류비:재계산유류비, 톨비:c.톨비,
+      인건비, 차량감가, 경유지수, 경유지수당금액,
+      소계, 기타경비, 원가합계, 이윤:이윤금액, 도급비, 월도급비};
+    견적데이터.push(row);
 
-  총.거리+=c.거리km; 총.시간+=c.시간분;
-  총.유류비+=c.유류비; 총.톨비+=c.톨비;
-  총.인건비+=인건비; 총.감가+=차량감가;
-  총.경유지수+=경유지수; 총.경유지수당+=경유지수당금액;
-  총.소계+=소계; 총.기타+=기타경비;
-  총.원가+=원가합계; 총.이윤+=이윤금액; 총.도급비+=도급비;
+    총.거리+=c.거리km;         총.시간+=c.시간분;
+    총.유류비+=재계산유류비;    총.톨비+=c.톨비;
+    총.인건비+=인건비;          총.감가+=차량감가;
+    총.경유지수+=경유지수;      총.경유지수당+=경유지수당금액;
+    총.소계+=소계;              총.기타+=기타경비;
+    총.원가+=원가합계;          총.이윤+=이윤금액;
+    총.도급비+=도급비;          총.월도급비+=월도급비;
 
-  tbody.innerHTML+=`<tr>
-    <td>${h}</td><td>${s.톤수}</td><td>${s.연료}</td>
-    <td>${c.거리km.toFixed(1)}</td><td>${c.시간분}</td>
-    <td>${숫자포맷(c.유류비)}</td><td>${숫자포맷(c.톨비)}</td>
-    <td>${숫자포맷(인건비)}</td><td>${숫자포맷(차량감가)}</td>
-    <td>${경유지수}</td><td>${숫자포맷(경유지수당금액)}</td>
-    <td>${숫자포맷(소계)}</td><td>${숫자포맷(기타경비)}</td>
-    <td>${숫자포맷(원가합계)}</td><td>${숫자포맷(이윤금액)}</td>
-    <td class="도급비">${숫자포맷(도급비)}</td></tr>`;
-});
+    tbody.innerHTML+=`<tr>
+      <td>${h}</td><td>${s.톤수}</td><td>${s.연료}</td>
+      <td>${c.거리km.toFixed(1)}</td><td>${c.시간분}</td>
+      <td>${숫자포맷(재계산유류비)}</td><td>${숫자포맷(c.톨비)}</td>
+      <td>${숫자포맷(인건비)}</td><td>${숫자포맷(차량감가)}</td>
+      <td>${경유지수}</td><td>${숫자포맷(경유지수당금액)}</td>
+      <td>${숫자포맷(소계)}</td><td>${숫자포맷(기타경비)}</td>
+      <td>${숫자포맷(원가합계)}</td><td>${숫자포맷(이윤금액)}</td>
+      <td class="도급비">${숫자포맷(도급비)}</td>
+      <td class="도급비" style="background:#fff3e0">${숫자포맷(월도급비)}</td>
+    </tr>`;
+  });
 
   tbody.innerHTML+=`<tr class="합계행">
     <td colspan="3">합 계</td>
@@ -745,12 +770,13 @@ function 견적계산(){
     <td>${총.경유지수}</td><td>${숫자포맷(총.경유지수당)}</td>
     <td>${숫자포맷(총.소계)}</td><td>${숫자포맷(총.기타)}</td>
     <td>${숫자포맷(총.원가)}</td><td>${숫자포맷(총.이윤)}</td>
-    <td class="도급비">${숫자포맷(총.도급비)}</td></tr>`;
+    <td class="도급비">${숫자포맷(총.도급비)}</td>
+    <td class="도급비" style="background:#fff3e0">${숫자포맷(총.월도급비)}</td>
+  </tr>`;
 
   document.getElementById('견적결과').style.display='block';
   document.getElementById('btn-엑셀다운').style.display='inline-block';
 }
-
 // ═══ 엑셀 다운로드 ═══
 function 엑셀다운로드(){
   if(견적데이터.length===0){alert('먼저 견적 계산을 해주세요!');return;}
@@ -764,17 +790,25 @@ function 엑셀다운로드(){
 function _엑셀생성(){
   const 관할=document.getElementById('sel관할').value;
   const 날짜=new Date().toLocaleDateString('ko-KR');
-  const headers=['호차','톤수','연료','거리(km)','시간(분)','유류비','톨비','인건비','차량감가','경유지수','경유지수당','소계','기타경비','원가합계','이윤','도급비'];
-  const rows=견적데이터.map(r=>[r.호차,r.톤수,r.연료,r.거리,r.시간,r.유류비,r.톨비,r.인건비,r.차량감가,r.경유지수,r.경유지수당금액,r.소계,r.기타경비,r.원가합계,r.이윤,r.도급비]);
+  const headers=['호차','톤수','연료','거리(km)','시간(분)','유류비','톨비',
+  '인건비','차량감가','경유지수','경유지수당','소계','기타경비','원가합계','이윤','도급비','월도급비'];
+  const rows=견적데이터.map(r=>[r.호차,r.톤수,r.연료,r.거리,r.시간,
+  r.유류비,r.톨비,r.인건비,r.차량감가,r.경유지수,r.경유지수당금액,
+  r.소계,r.기타경비,r.원가합계,r.이윤,r.도급비,r.월도급비]);
   const 합=견적데이터.reduce((a,r)=>({
   ...a,
   거리:a.거리+r.거리, 시간:a.시간+r.시간,
   유류비:a.유류비+r.유류비, 톨비:a.톨비+r.톨비,
   인건비:a.인건비+r.인건비, 차량감가:a.차량감가+r.차량감가,
-  경유지수:a.경유지수+r.경유지수, 경유지수당:a.경유지수당+r.경유지수당금액,
+  경유지수:a.경유지수+r.경유지수, 경유지수당:a.경유지수당+(r.경유지수당금액||0),
   소계:a.소계+r.소계, 기타경비:a.기타경비+r.기타경비,
-  원가합계:a.원가합계+r.원가합계, 이윤:a.이윤+r.이윤, 도급비:a.도급비+r.도급비
-}),{거리:0,시간:0,유류비:0,톨비:0,인건비:0,차량감가:0,경유지수:0,경유지수당:0,소계:0,기타경비:0,원가합계:0,이윤:0,도급비:0});
+  원가합계:a.원가합계+r.원가합계, 이윤:a.이윤+r.이윤,
+  도급비:a.도급비+r.도급비, 월도급비:a.월도급비+r.월도급비
+}),{거리:0,시간:0,유류비:0,톨비:0,인건비:0,차량감가:0,
+    경유지수:0,경유지수당:0,소계:0,기타경비:0,원가합계:0,이윤:0,도급비:0,월도급비:0});
+  rows.push(['합계','','',합.거리.toFixed(1),합.시간,합.유류비,합.톨비,
+  합.인건비,합.차량감가,합.경유지수,합.경유지수당,합.소계,합.기타경비,
+  합.원가합계,합.이윤,합.도급비,합.월도급비]);
   const ws=XLSX.utils.aoa_to_sheet([[`${관할} 도급비 견적서 (${날짜})`],[],headers,...rows]);
   ws['!cols']=headers.map((_,i)=>({wch:i<3?9:12}));
   const wb=XLSX.utils.book_new();
