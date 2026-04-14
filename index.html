@@ -7,6 +7,9 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f0f2f5; font-family: 맑은고딕, sans-serif; font-size: 14px; }
+    /* ⭐ 드래그 중 칩이 마우스 이벤트 방해 안 하도록 */
+    body.dragging-active .chip { pointer-events: none; }
+    body.dragging-active .chip-zone { pointer-events: all; }
 
     #로그인화면 { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:16px; }
     .로그인박스 { background:white; border-radius:16px; padding:32px 24px; box-shadow:0 4px 20px rgba(0,0,0,0.12); width:100%; max-width:340px; text-align:center; }
@@ -344,9 +347,12 @@ async function 초기화() {
     });
     CSV파싱(경로csv).slice(1).forEach(v=>{
       if(!v[2]) return;
+      // D열(index 3)부터 끝까지 읽어서 비어있지 않은 것만
+      const 코드들 = v.slice(3).map(s=>s.trim()).filter(Boolean);
       호차경로DB.push({
         관할코드:v[0]?.trim(), 관할명:v[1]?.trim(),
-        호차명:v[2].trim(), 경로:v[3]?.trim()||''
+        호차명:v[2].trim(),
+        경로: 코드들.join('|')  // 내부적으로 파이프 구분 유지
       });
     });
   }
@@ -516,15 +522,18 @@ function setupDnD(){
 }
 
 function onDS(e){
+  document.body.classList.add('dragging-active'); // ⭐ 드래그 시작
   draggedEl=e.currentTarget;
   const fromZone=draggedEl.closest('.chip-zone').dataset.zone;
-  dragInfo={code:draggedEl.dataset.code,uid:draggedEl.dataset.uid,fromZone,isPalette:draggedEl.dataset.isPalette==='true'};
+  dragInfo={code:draggedEl.dataset.code,uid:draggedEl.dataset.uid,
+    fromZone,isPalette:draggedEl.dataset.isPalette==='true'};
   dropDone=false;
   if(!dragInfo.isPalette) draggedEl.classList.add('dragging');
   e.dataTransfer.effectAllowed='move';
 }
 
 function onDE(e){
+  document.body.classList.remove('dragging-active'); // ⭐ 드래그 끝
   if(draggedEl) draggedEl.classList.remove('dragging');
   document.querySelectorAll('.chip-zone').forEach(z=>z.classList.remove('drag-over'));
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
