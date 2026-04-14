@@ -502,8 +502,17 @@ function 호차초기화(h){
 
 // ═══ 드래그&드롭 ═══
 function setupDnD(){
-  document.querySelectorAll('.chip').forEach(c=>{ c.addEventListener('dragstart',onDS); c.addEventListener('dragend',onDE); });
-  document.querySelectorAll('.chip-zone').forEach(z=>{ z.addEventListener('dragover',onDO); z.addEventListener('dragleave',onDL); z.addEventListener('drop',onDrop); });
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.addEventListener('dragstart', onDS);
+    c.addEventListener('dragend',   onDE);
+    // ⭐ 핵심: 칩 위를 지날 때도 드롭 허용
+    c.addEventListener('dragover',  e => e.preventDefault());
+  });
+  document.querySelectorAll('.chip-zone').forEach(z=>{
+    z.addEventListener('dragover',  onDO);
+    z.addEventListener('dragleave', onDL);
+    z.addEventListener('drop',      onDrop);
+  });
 }
 
 function onDS(e){
@@ -556,8 +565,11 @@ function onDrop(e){
     nc.dataset.code=code; nc.dataset.uid=newUID;
     nc.innerHTML=`${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}`;
     after?zone.insertBefore(nc,after):zone.appendChild(nc);
-    nc.addEventListener('dragstart',onDS); nc.addEventListener('dragend',onDE);
-    // ⭐ 핵심 수정: 팔레트 드롭 후 호차배치 업데이트
+    // ⭐ 새 칩에도 3가지 이벤트 모두 등록
+    nc.addEventListener('dragstart', onDS);
+    nc.addEventListener('dragend',   onDE);
+    nc.addEventListener('dragover',  e => e.preventDefault());
+    // 호차배치 업데이트
     호차배치[toZone]=[...zone.querySelectorAll('.chip')]
       .map(c=>({uid:c.dataset.uid, code:c.dataset.code}));
   } else {
