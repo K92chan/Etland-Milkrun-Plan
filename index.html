@@ -7,9 +7,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f0f2f5; font-family: 맑은고딕, sans-serif; font-size: 14px; }
-    /* ⭐ 드래그 중 칩이 마우스 이벤트 방해 안 하도록 */
-    body.dragging-active .chip { pointer-events: none; }
-    body.dragging-active .chip-zone { pointer-events: all; }
 
     #로그인화면 { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:16px; }
     .로그인박스 { background:white; border-radius:16px; padding:32px 24px; box-shadow:0 4px 20px rgba(0,0,0,0.12); width:100%; max-width:340px; text-align:center; }
@@ -507,97 +504,148 @@ function 호차초기화(h){
 }
 
 // ═══ 드래그&드롭 ═══
+// ═══ 드래그&드롭 ═══
 function setupDnD(){
   document.querySelectorAll('.chip').forEach(c=>{
     c.addEventListener('dragstart', onDS);
     c.addEventListener('dragend',   onDE);
-    // ⭐ 핵심: 칩 위를 지날 때도 드롭 허용
-    c.addEventListener('dragover',  e => e.preventDefault());
   });
   document.querySelectorAll('.chip-zone').forEach(z=>{
     z.addEventListener('dragover',  onDO);
     z.addEventListener('dragleave', onDL);
     z.addEventListener('drop',      onDrop);
   });
+  // ⭐ 문서 전체에 dragover preventDefault — 칩 위를 지날 때 드롭 막힘 방지
+  document.addEventListener('dragover', e => e.preventDefault());
 }
 
 function onDS(e){
-  document.body.classList.add('dragging-active'); // ⭐ 드래그 시작
-  draggedEl=e.currentTarget;
-  const fromZone=draggedEl.closest('.chip-zone').dataset.zone;
-  dragInfo={code:draggedEl.dataset.code,uid:draggedEl.dataset.uid,
-    fromZone,isPalette:draggedEl.dataset.isPalette==='true'};
-  dropDone=false;
-  if(!dragInfo.isPalette) draggedEl.classList.add('dragging');
-  e.dataTransfer.effectAllowed='move';
+  draggedEl = e.currentTarget;
+  const fromZone = draggedEl.closest('.chip-zone')?.dataset.zone;
+  if(!fromZone) return;
+  dragInfo = {
+    code: draggedEl.dataset.code,
+    uid:  draggedEl.dataset.uid,
+    fromZone,
+    isPalette: draggedEl.dataset.isPalette === 'true'
+  };
+  dropDone = false;
+  setTimeout(() => {
+    if(!dragInfo?.isPalette) draggedEl?.classList.add('dragging');
+  }, 0);
+  e.dataTransfer.effectAllowed = 'move';
 }
 
 function onDE(e){
-  document.body.classList.remove('dragging-active'); // ⭐ 드래그 끝
   if(draggedEl) draggedEl.classList.remove('dragging');
   document.querySelectorAll('.chip-zone').forEach(z=>z.classList.remove('drag-over'));
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
-  if(!dropDone&&!dragInfo?.isPalette) renderGrid();
-  draggedEl=null; dragInfo=null;
+  if(!dropDone && dragInfo && !dragInfo.isPalette) renderGrid();
+  draggedEl = null;
+  dragInfo = null;
 }
 
 function onDO(e){
   e.preventDefault();
-  const zone=e.currentTarget;
+  e.stopPropagation();
+  const zone = e.currentTarget;
   if(zone.dataset.palette) return;
   zone.classList.add('drag-over');
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
-  const after=getAfterEl(zone,e.clientX);
-  const ind=document.createElement('div'); ind.className='drop-indicator';
-  after?zone.insertBefore(ind,after):zone.appendChild(ind);
+  const after = getAfterEl(zone, e.clientX);
+  const ind = document.createElement('div');
+  ind.className = 'drop-indicator';
+  after ? zone.insertBefore(ind, after) : zone.appendChild(ind);
 }
 
-function onDL(e){ if(!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over'); }
+function onDL(e){
+  const zone = e.currentTarget;
+  // ⭐ relatedTarget이 zone 밖일 때만 drag-over 제거
+  if(!zone.contains(e.relatedTarget)){
+    zone.classList.remove('drag-over');
+    document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
+  }
+}
 
 function onDrop(e){
   e.preventDefault();
-  const zone=e.currentTarget;
+  e.stopPropagation();
+  const zone = e.currentTarget;
   if(zone.dataset.palette) return;
-  dropDone=true;
+  if(!dragInfo) return;
+
+  dropDone = true;
   zone.classList.remove('drag-over');
   document.querySelectorAll('.drop-indicator').forEach(el=>el.remove());
-  if(!dragInfo) return;
-  const {code,uid,fromZone,isPalette}=dragInfo;
-  const toZone=zone.dataset.zone;
-  const after=getAfterEl(zone,e.clientX);
+
+  const { code, uid, fromZone, isPalette } = dragInfo;
+  const toZone = zone.dataset.zone;
+  const after = getAfterEl(zone, e.clientX);
 
   if(isPalette){
-    const p=지점조회(code); if(!p) return;
-    const newUID=genUID();
-    const nc=document.createElement('div');
-    nc.className='chip chip-mul'; nc.draggable=true;
-    nc.dataset.code=code; nc.dataset.uid=newUID;
-    nc.innerHTML=`${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}`;
-    after?zone.insertBefore(nc,after):zone.appendChild(nc);
-    // ⭐ 새 칩에도 3가지 이벤트 모두 등록
+    // 팔레트 → 복사본 생성
+    const p = 지점조회(code); if(!p) return;
+    const newUID = genUID();
+    const nc = document.createElement('div');
+    nc.className = 'chip chip-mul';
+    nc.draggable = true;
+    nc.dataset.code = code;
+    nc.dataset.uid  = newUID;
+    nc.innerHTML = `${p.명}${p.물동량?`<span class="qty">${p.물동량}</span>`:''}`;
+    after ? zone.insertBefore(nc, after) : zone.appendChild(nc);
     nc.addEventListener('dragstart', onDS);
     nc.addEventListener('dragend',   onDE);
-    nc.addEventListener('dragover',  e => e.preventDefault());
-    // 호차배치 업데이트
-    호차배치[toZone]=[...zone.querySelectorAll('.chip')]
-      .map(c=>({uid:c.dataset.uid, code:c.dataset.code}));
+    // ⭐ 호차배치 즉시 업데이트
+    호차배치[toZone] = [...zone.querySelectorAll('.chip')]
+      .map(c => ({uid: c.dataset.uid, code: c.dataset.code}));
+
   } else {
     if(!draggedEl) return;
-    after?zone.insertBefore(draggedEl,after):zone.appendChild(draggedEl);
-    const fromEl=document.querySelector(`.chip-zone[data-zone="${fromZone}"]`);
-    const toEl=document.querySelector(`.chip-zone[data-zone="${toZone}"]`);
-    if(fromEl) 호차배치[fromZone]=[...fromEl.querySelectorAll('.chip')]
-      .map(c=>({uid:c.dataset.uid,code:c.dataset.code}));
-    if(toEl)   호차배치[toZone]  =[...toEl.querySelectorAll('.chip')]
-      .map(c=>({uid:c.dataset.uid,code:c.dataset.code}));
+    after ? zone.insertBefore(draggedEl, after) : zone.appendChild(draggedEl);
+    // ⭐ 출발/도착 데이터 업데이트
+    const fromEl = document.querySelector(`.chip-zone[data-zone="${fromZone}"]`);
+    const toEl   = document.querySelector(`.chip-zone[data-zone="${toZone}"]`);
+    if(fromEl) 호차배치[fromZone] = [...fromEl.querySelectorAll('.chip')]
+      .map(c => ({uid: c.dataset.uid, code: c.dataset.code}));
+    if(toEl)   호차배치[toZone]   = [...toEl.querySelectorAll('.chip')]
+      .map(c => ({uid: c.dataset.uid, code: c.dataset.code}));
   }
 
   refreshDepartChip(toZone);
-  if(fromZone!==toZone) refreshDepartChip(fromZone);
+  if(fromZone !== toZone) refreshDepartChip(fromZone);
   document.querySelectorAll('.chip-zone').forEach(z=>{
-    const n=z.dataset.zone; if(n==='물류') return;
-    z.classList.toggle('chip-zone-empty',(호차배치[n]||[]).length===0);
+    const n = z.dataset.zone; if(n === '물류') return;
+    z.classList.toggle('chip-zone-empty', (호차배치[n]||[]).length === 0);
   });
+}
+
+function refreshDepartChip(zone){
+  if(!호차목록.includes(zone)) return;
+  const zoneEl = document.querySelector(`.chip-zone[data-zone="${zone}"]`);
+  if(!zoneEl) return;
+  [...zoneEl.querySelectorAll('.chip')].forEach((c, i) => {
+    c.classList.remove('chip-depart');
+    const p = 지점조회(c.dataset.code);
+    const isMulChip = p?.구분 === '물류';
+    if(i === 0){
+      c.classList.add('chip-depart');
+      c.innerHTML = `🏁 ${p?.명||''}${p?.물동량?`<span class="qty">${p.물동량}</span>`:''}`;
+    } else {
+      c.innerHTML = `${p?.명||''}${p?.물동량?`<span class="qty">${p.물동량}</span>`:''}`;
+    }
+    if(isMulChip) c.classList.add('chip-mul');
+  });
+}
+
+function getAfterEl(container, x){
+  const els = [...container.querySelectorAll('.chip:not(.dragging)')];
+  return els.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = x - box.left - box.width / 2;
+    if(offset < 0 && offset > closest.offset)
+      return { offset, element: child };
+    return closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 async function 코스계산(h){
