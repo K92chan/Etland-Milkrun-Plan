@@ -638,7 +638,6 @@ async function 코스계산(h){
       const 시간분 = sm.duration > 0 ? Math.round(sm.duration/60000) : 0;
       const 연비 = 연비맵[s.톤수] || 6;
       const 유가VAT포함 = Number(document.getElementById('유가_'+s.연료)?.value) || 1650;
-      const 유류비VAT포함 = c.거리km > 0 ? Math.round(c.거리km / 연비 * 리터당VAT포함) : 0;
       const 톨비 = sm.tollFare || 0;
       코스결과캐시[h] = {거리km, 시간분, 유류비VAT포함, 톨비};
       summaryEl.innerHTML = `
@@ -764,7 +763,7 @@ function 견적계산(){
     const 리터당VAT포함 = 현재유가맵[s.연료] || 1650;
 
     // ⭐ 유류비 VAT 분리
-    const 유류비VAT포함  = c.유류비VAT포함 || (c.거리km > 0 ? Math.round(c.거리km / 연비 * 리터당VAT포함) : 0);
+    const 유류비VAT포함 = c.거리km > 0 ? Math.round(c.거리km / 연비 * 리터당VAT포함) : 0;
     const 유류비공급가   = Math.round(유류비VAT포함 / 1.1);
     const 유류비VAT      = 유류비VAT포함 - 유류비공급가;
 
