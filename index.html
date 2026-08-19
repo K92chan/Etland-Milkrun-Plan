@@ -48,11 +48,24 @@
     .btn-gray   { background:#f0f0f0; color:#555; }
     .btn-red    { background:#e53935; color:white; }
     .btn-orange { background:#e65100; color:white; }
+    .btn-purple { background:#6a1b9a; color:white; }
     .btn-sm     { padding:5px 8px; font-size:11px; }
 
-    /* ⭐ 기존모드 안내 배너 */
     .모드배너 { display:none; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:8px 14px; margin-bottom:10px; font-size:12px; color:#2e7d32; font-weight:bold; }
     .모드배너.보임 { display:block; }
+
+    /* ── 최적화 패널 ── */
+    .최적화패널 { background:white; border-radius:12px; padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:12px; border-left:4px solid #6a1b9a; }
+    .최적화패널 h3 { font-size:14px; color:#6a1b9a; margin-bottom:8px; }
+    .최적화안내 { font-size:12px; color:#555; margin-bottom:12px; line-height:1.6; background:#f9f0ff; border-radius:8px; padding:8px 12px; }
+    .최적화안내 .경고 { color:#e53935; font-weight:bold; }
+    .최적화옵션 { display:flex; gap:12px; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap; }
+    .최적화카드묶음 { display:flex; gap:10px; flex-wrap:wrap; }
+    .최적화카드 { flex:1; min-width:200px; background:#f8f9fa; border-radius:10px; padding:12px 14px; border:1.5px solid #e0e0e0; display:flex; flex-direction:column; gap:6px; }
+    .최적화카드 .카드제목 { font-size:13px; font-weight:bold; color:#333; }
+    .최적화카드 .카드설명 { font-size:11px; color:#666; line-height:1.5; flex:1; }
+    .최적화카드 .카드알고리즘 { font-size:10px; color:#999; border-top:1px solid #eee; padding-top:6px; margin-top:2px; }
+    .최적화카드 .btn { margin-top:4px; width:100%; }
 
     .grid { display:flex; flex-direction:column; gap:8px; }
     .row-wrap { background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.07); overflow:hidden; }
@@ -132,6 +145,7 @@
       .chip-zone { min-width:0; width:100%; }
       .stat-box { min-width:60px; }
       .단가그룹 input { width:85px; }
+      .최적화카드 { min-width:100%; }
     }
   </style>
 </head>
@@ -178,7 +192,6 @@
     </div>
   </div>
 
-  <!-- ⭐ 기존모드 안내 배너 -->
   <div class="모드배너" id="모드배너">🟢 기존 코스 보기 모드 — 드래그 및 저장이 비활성화되어 있습니다.</div>
 
   <div class="컨트롤바">
@@ -188,7 +201,70 @@
     </div>
     <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
       <button class="btn btn-green" onclick="전체계산()">🔄 전체계산</button>
+      <button class="btn btn-purple" id="btn-최적화" onclick="최적화패널토글()">⚡ 최적화</button>
       <button class="btn btn-orange" onclick="견적패널토글()">💰 도급비 견적</button>
+    </div>
+  </div>
+
+  <!-- ⭐ 최적화 패널 -->
+  <div class="최적화패널" id="최적화패널" style="display:none">
+    <h3>⚡ 코스 최적화</h3>
+    <div class="최적화안내">
+      미지정 + 현재 배치된 일반 지점을 모두 수거하여 선택한 기준으로 재배분합니다.<br>
+      최적화 알고리즘은 <b>좌표 직선거리(Haversine)</b>를 사용하며 API 호출 없이 즉시 실행됩니다.<br>
+      적용 후 <b>🔄 전체계산</b>으로 실제 도로 거리·시간을 확인하세요.<br>
+      <span class="경고">⚠️ 기존 배치가 초기화되고 새로 배분됩니다.</span>
+    </div>
+    <div class="최적화옵션">
+      <div class="컨트롤그룹">
+        <label>🚛 사용 호차 수</label>
+        <select id="opt-호차수">
+          <option value="1">1대</option><option value="2">2대</option>
+          <option value="3">3대</option><option value="4">4대</option>
+          <option value="5" selected>5대</option><option value="6">6대</option>
+          <option value="7">7대</option><option value="8">8대</option>
+          <option value="9">9대</option><option value="10">10대</option>
+        </select>
+      </div>
+      <div class="컨트롤그룹">
+        <label>🔁 물류 복귀 추가</label>
+        <select id="opt-복귀">
+          <option value="yes">출발+복귀 자동 추가</option>
+          <option value="no">물류 없이 배분만</option>
+        </select>
+      </div>
+    </div>
+    <div class="최적화카드묶음">
+      <!-- 거리 최소화 -->
+      <div class="최적화카드">
+        <div class="카드제목">🗺 거리 최소화</div>
+        <div class="카드설명">
+          물류거점을 기준으로 각 지점의 방위각(각도)을 계산하여 지리적 섹터로 나눕니다.
+          각 호차 내 경유 순서는 <b>최근접 이웃(NN) 알고리즘</b>으로 최적화합니다.
+        </div>
+        <div class="카드알고리즘">알고리즘: 각도 스윕 + NN 순서 최적화</div>
+        <button class="btn btn-blue" onclick="최적화실행('거리')">적용</button>
+      </div>
+      <!-- 물동량 균등 -->
+      <div class="최적화카드">
+        <div class="카드제목">⚖️ 물동량 균등</div>
+        <div class="카드설명">
+          물동량이 큰 지점부터 각 호차에 균등하게 배분합니다.
+          특정 차량만 과부하되는 현상을 방지하며, 각 호차의 합산 물동량이 최대한 같아집니다.
+        </div>
+        <div class="카드알고리즘">알고리즘: 물동량 내림차순 → 최소 힙 배분 + NN 순서</div>
+        <button class="btn btn-green" onclick="최적화실행('물동량')">적용</button>
+      </div>
+      <!-- 경유지 균등 -->
+      <div class="최적화카드">
+        <div class="카드제목">🚏 경유지 균등</div>
+        <div class="카드설명">
+          각 호차의 정차 지점 수를 최대한 같게 배분합니다.
+          인근 지점을 인접 호차에 나눠 분산시키므로 운행 시간 편차도 줄어듭니다.
+        </div>
+        <div class="카드알고리즘">알고리즘: 거리순 정렬 → 라운드로빈 + NN 순서</div>
+        <button class="btn btn-orange" onclick="최적화실행('경유지')">적용</button>
+      </div>
     </div>
   </div>
 
@@ -247,7 +323,6 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygNvG1fGnUMpBo
 const 지점시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=0&single=true&output=csv';
 const 계정시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTs6k1Ky8Hdnrl2U5A242Vg6ZqBaQSrLGkDr2xf_yMuMflYc-dD_2-v-2wRmIsip32W087DXCx4ZRzu/pub?gid=1375354052&single=true&output=csv';
 const 경로시트URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=1187779102&single=true&output=csv';
-// ⭐ 기존 코스 경로 시트
 const 기존경로시트URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTDmByM5PV5zjDW4mC7kBtNIriUlVPy6DhdZQEuqD5YAizzHDY95_eqhWurQxgmMgIDJCy1MoQ3F91-/pub?gid=121602110&single=true&output=csv';
 
 const 호차목록 = ['1호차','2호차','3호차','4호차','5호차','6호차','7호차','8호차','9호차','10호차'];
@@ -256,7 +331,7 @@ const 연비맵   = { '1톤':10, '2.5톤':8, '5톤':6, '11톤':4.5, '25톤':3.5 
 // ═══ 상태 ═══
 let 계정목록 = [];
 let 현재사용자 = null;
-let 현재모드 = '변경'; // ⭐ '변경' 또는 '기존'
+let 현재모드 = '변경';
 let 전체지점 = [];
 let 현재지점 = [];
 let 호차배치 = {};
@@ -298,6 +373,36 @@ function 지점조회(code) { return 전체지점.find(p=>p.코드===code); }
 function is물류(code)   { return 지점조회(code)?.구분==='물류'; }
 function 좌표유효(p)   { return p && p.x && p.y && !isNaN(Number(p.x)) && !isNaN(Number(p.y)); }
 
+// ═══ Haversine 직선거리 (km) ═══
+function haversine(p1, p2) {
+  const R = 6371;
+  const dLat = (Number(p2.y) - Number(p1.y)) * Math.PI / 180;
+  const dLon = (Number(p2.x) - Number(p1.x)) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2
+    + Math.cos(Number(p1.y)*Math.PI/180) * Math.cos(Number(p2.y)*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ═══ 최근접 이웃 알고리즘 (경유 순서 최적화) ═══
+function nearestNeighborOrder(base, 지점들) {
+  if (지점들.length === 0) return [];
+  const remaining = [...지점들];
+  const ordered = [];
+  let current = base;
+  while (remaining.length > 0) {
+    let minDist = Infinity, minIdx = 0;
+    remaining.forEach((p, i) => {
+      if (!좌표유효(p)) return;
+      const d = 좌표유효(current) ? haversine(current, p) : 0;
+      if (d < minDist) { minDist = d; minIdx = i; }
+    });
+    ordered.push(remaining[minIdx]);
+    current = remaining[minIdx];
+    remaining.splice(minIdx, 1);
+  }
+  return ordered;
+}
+
 // ═══ 로그인 ═══
 fetch(계정시트URL).then(r=>r.text()).then(csv=>{
   CSV파싱(csv).slice(1).forEach(v=>{
@@ -311,40 +416,32 @@ function 로그인(모드) {
   const 계정=계정목록.find(a=>a.id===id&&a.pw===pw);
   if(!계정){document.getElementById('로그인오류').style.display='block';return;}
   현재사용자=계정;
-  현재모드=모드; // ⭐ 모드 저장
-
-  // ⭐ 기존모드 CSS 클래스
-  if(모드==='기존'){
-    document.body.classList.add('기존모드');
-  } else {
-    document.body.classList.remove('기존모드');
-  }
-
+  현재모드=모드;
+  if(모드==='기존') document.body.classList.add('기존모드');
+  else document.body.classList.remove('기존모드');
   document.getElementById('로그인오류').style.display='none';
   document.getElementById('로그인화면').style.display='none';
   document.getElementById('대시보드').style.display='block';
-
-  // ⭐ 뱃지 및 제목 설정
   const 권한표시 = 계정.권한==='전체'?'마스터':계정.권한;
   const 뱃지el = document.getElementById('사용자뱃지');
+  const 최적화btn = document.getElementById('btn-최적화');
   if(모드==='기존'){
     document.getElementById('대시보드제목').textContent = '🟢 기존 코스 조회';
     뱃지el.textContent = `${계정.id} (${권한표시}) 🟢기존`;
     뱃지el.classList.add('기존');
     document.getElementById('모드배너').classList.add('보임');
-    document.getElementById('btn-비번').style.display='none'; // 기존모드엔 비번변경 숨김
+    document.getElementById('btn-비번').style.display='none';
+    if(최적화btn) 최적화btn.style.display='none'; // 기존모드엔 최적화 숨김
   } else {
     document.getElementById('대시보드제목').textContent = '🔵 변경 코스 편집';
     뱃지el.textContent = `${계정.id} (${권한표시}) 🔵변경`;
     뱃지el.classList.remove('기존');
     document.getElementById('모드배너').classList.remove('보임');
     document.getElementById('btn-비번').style.display='inline-block';
+    if(최적화btn) 최적화btn.style.display='inline-block';
   }
-
-  // ⭐ 모드 전환 시 기존 데이터 초기화 (다른 시트 로드 위해)
   전체지점 = [];
   호차경로DB = [];
-
   초기화();
 }
 
@@ -379,14 +476,11 @@ async function 비번변경(){
 
 // ═══ 초기화 ═══
 async function 초기화() {
-  // ⭐ 모드에 따라 다른 경로시트 URL 사용
   const 경로URL = 현재모드==='기존' ? 기존경로시트URL : 경로시트URL;
-
   const [지점csv, 경로csv] = await Promise.all([
     fetch(지점시트URL).then(r=>r.text()),
     fetch(경로URL).then(r=>r.text())
   ]);
-
   CSV파싱(지점csv).slice(1).forEach(v=>{
     if(!v[3]) return;
     전체지점.push({
@@ -397,16 +491,11 @@ async function 초기화() {
       구분:(v[11]?.trim()||'지점')
     });
   });
-
   CSV파싱(경로csv).slice(1).forEach(v=>{
     if(!v[2]) return;
     const 코드들 = v.slice(3).map(s=>s.trim()).filter(Boolean);
-    호차경로DB.push({
-      관할코드:v[0]?.trim(), 관할명:v[1]?.trim(),
-      호차명:v[2].trim(), 경로: 코드들.join('|')
-    });
+    호차경로DB.push({ 관할코드:v[0]?.trim(), 관할명:v[1]?.trim(), 호차명:v[2].trim(), 경로: 코드들.join('|') });
   });
-
   설정초기화();
   const 허용=현재사용자.권한==='전체'
     ?[...new Set(전체지점.map(p=>p.관할명))].sort()
@@ -526,7 +615,7 @@ function 설정변경(h,k,v){ if(!호차설정[h]) 호차설정[h]={연료:'디�
 
 // ═══ 호차 초기화 ═══
 function 호차초기화(h){
-  if(현재모드==='기존') return; // ⭐ 기존모드 차단
+  if(현재모드==='기존') return;
   if(!confirm(`${h} 배치를 초기화할까요?`)) return;
   (호차배치[h]||[]).forEach(item=>{
     if(!is물류(item.code)) 호차배치['미지정'].push({uid:genUID(),code:item.code});
@@ -542,11 +631,155 @@ function 호차초기화(h){
   시트저장([h]);
 }
 
-// ═══ 드래그&드롭 ═══
-function setupDnD(){
-  // ⭐ 기존모드면 드래그 이벤트 등록 안 함
+// ═══ 최적화 ═══
+function 최적화패널토글(){
+  if(현재모드==='기존'){ alert('기존 코스 모드에서는 최적화를 사용할 수 없어요!'); return; }
+  const el = document.getElementById('최적화패널');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function 최적화실행(기준) {
   if(현재모드==='기존') return;
 
+  const 사용호차수 = Number(document.getElementById('opt-호차수').value) || 5;
+  const 복귀추가 = document.getElementById('opt-복귀').value === 'yes';
+  const 대상호차 = 호차목록.slice(0, 사용호차수);
+
+  // ① 물류 거점 확인
+  const 물류지점들 = (호차배치['물류'] || [])
+    .map(code => 지점조회(code))
+    .filter(p => p && 좌표유효(p));
+
+  // ② 모든 일반 지점 수집 (미지정 + 대상호차 + 대상 외 호차)
+  const 모든코드 = new Set();
+  const 모든일반지점 = [];
+  const 수집대상 = [...대상호차, ...호차목록.slice(사용호차수), '미지정'];
+  수집대상.forEach(h => {
+    (호차배치[h]||[]).forEach(item => {
+      const p = 지점조회(item.code);
+      if(p && p.구분 !== '물류' && !모든코드.has(p.코드)){
+        모든코드.add(p.코드);
+        모든일반지점.push(p);
+      }
+    });
+  });
+
+  if(모든일반지점.length === 0){ alert('배분할 일반 지점이 없어요!'); return; }
+
+  const 기준명 = {거리:'🗺 거리 최소화', 물동량:'⚖️ 물동량 균등', 경유지:'🚏 경유지 균등'}[기준];
+  if(!confirm(`[${기준명}] 기준으로\n총 ${모든일반지점.length}개 지점을 ${사용호차수}대에 재배분할까요?\n기존 배치가 초기화됩니다.`)) return;
+
+  // 기준 물류 거점 (없으면 현재지점 첫번째 좌표 유효 지점으로 대체)
+  const 기준물류 = 물류지점들[0] || 현재지점.find(좌표유효);
+
+  // ③ 알고리즘별 그룹 배분
+  let 그룹들 = Array.from({length: 사용호차수}, () => []);
+
+  if(기준 === '거리') {
+    // 물류거점 기준 방위각 계산 → 섹터 분할 → NN 순서
+    const 좌표있음 = 모든일반지점.filter(좌표유효);
+    const 좌표없음 = 모든일반지점.filter(p => !좌표유효(p));
+
+    if(기준물류 && 좌표있음.length > 0){
+      // 방위각 계산 및 정렬
+      const withAngle = 좌표있음.map(p => {
+        const dx = Number(p.x) - Number(기준물류.x);
+        const dy = Number(p.y) - Number(기준물류.y);
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        if(angle < 0) angle += 360;
+        return { p, angle };
+      });
+      withAngle.sort((a, b) => a.angle - b.angle);
+
+      // 섹터별 균등 배분 (연속된 각도 구간을 호차에 할당)
+      withAngle.forEach((item, i) => 그룹들[i % 사용호차수].push(item.p));
+    } else {
+      // 좌표 없으면 단순 배분
+      좌표있음.forEach((p, i) => 그룹들[i % 사용호차수].push(p));
+    }
+    // 좌표 없는 지점 추가
+    좌표없음.forEach((p, i) => 그룹들[i % 사용호차수].push(p));
+    // 각 그룹 내 NN 순서 최적화
+    그룹들 = 그룹들.map(그룹 => {
+      const 유 = 그룹.filter(좌표유효);
+      const 무 = 그룹.filter(p => !좌표유효(p));
+      return [...(기준물류 ? nearestNeighborOrder(기준물류, 유) : 유), ...무];
+    });
+
+  } else if(기준 === '물동량') {
+    // 물동량 내림차순 → 최소 힙(greedy) 배분
+    const sorted = [...모든일반지점].sort((a, b) =>
+      (Number(b.물동량)||0) - (Number(a.물동량)||0)
+    );
+    const 호차물동량 = Array(사용호차수).fill(0);
+    sorted.forEach(p => {
+      const minIdx = 호차물동량.indexOf(Math.min(...호차물동량));
+      그룹들[minIdx].push(p);
+      호차물동량[minIdx] += Number(p.물동량) || 0;
+    });
+    // 각 그룹 내 NN 순서
+    그룹들 = 그룹들.map(그룹 => {
+      const 유 = 그룹.filter(좌표유효);
+      const 무 = 그룹.filter(p => !좌표유효(p));
+      return [...(기준물류 ? nearestNeighborOrder(기준물류, 유) : 유), ...무];
+    });
+
+  } else if(기준 === '경유지') {
+    // 거리순 정렬 후 라운드로빈 (인접 지점이 다른 호차에 분산)
+    let sorted = [...모든일반지점];
+    if(기준물류){
+      sorted = sorted.sort((a, b) => {
+        const da = 좌표유효(a) ? haversine(기준물류, a) : 999999;
+        const db = 좌표유효(b) ? haversine(기준물류, b) : 999999;
+        return da - db;
+      });
+    }
+    sorted.forEach((p, i) => 그룹들[i % 사용호차수].push(p));
+    // 각 그룹 내 NN 순서
+    그룹들 = 그룹들.map(그룹 => {
+      const 유 = 그룹.filter(좌표유효);
+      const 무 = 그룹.filter(p => !좌표유효(p));
+      return [...(기준물류 ? nearestNeighborOrder(기준물류, 유) : 유), ...무];
+    });
+  }
+
+  // ④ 배치 초기화 및 적용
+  배치초기화();
+  현재지점.filter(p => p.구분 === '물류').forEach(p => 호차배치['물류'].push(p.코드));
+
+  const 물류코드 = 물류지점들[0]?.코드 || null;
+
+  대상호차.forEach((h, i) => {
+    const 그룹 = 그룹들[i] || [];
+    if(그룹.length === 0){ 호차배치[h] = []; return; }
+    const items = [];
+    if(복귀추가 && 물류코드) items.push({uid:genUID(), code:물류코드}); // 출발
+    그룹.forEach(p => items.push({uid:genUID(), code:p.코드}));
+    if(복귀추가 && 물류코드) items.push({uid:genUID(), code:물류코드}); // 복귀
+    호차배치[h] = items;
+  });
+
+  // 나머지 미지정으로 남기기
+  renderGrid();
+  시트저장(대상호차);
+
+  // ⑤ 결과 요약
+  const 요약 = 대상호차
+    .map((h, i) => `${h}: ${그룹들[i]?.length || 0}개소`)
+    .filter((_, i) => (그룹들[i]?.length || 0) > 0)
+    .join('\n');
+  const 물동량요약 = 기준 === '물동량'
+    ? '\n\n[호차별 물동량합]\n' + 대상호차
+        .map((h, i) => `${h}: ${(그룹들[i]||[]).reduce((s,p)=>s+(Number(p.물동량)||0),0)}`)
+        .filter((_, i) => (그룹들[i]?.length||0) > 0)
+        .join('\n')
+    : '';
+  alert(`✅ [${기준명}] 최적화 완료!\n\n${요약}${물동량요약}\n\n🔄 전체계산으로 실제 경로를 확인하세요.`);
+}
+
+// ═══ 드래그&드롭 ═══
+function setupDnD(){
+  if(현재모드==='기존') return;
   document.querySelectorAll('.chip').forEach(c=>{
     c.addEventListener('dragstart', onDS);
     c.addEventListener('dragend',   onDE);
@@ -663,7 +896,6 @@ async function 코스계산(h){
     p && p.x && p.y && String(p.x).trim() !== '' && String(p.y).trim() !== '' &&
     !isNaN(parseFloat(p.x)) && !isNaN(parseFloat(p.y))
   );
-  console.log(`[${h}] 배치 ${items.length}개, 좌표유효 ${지점들.length}개`);
   if(지점들.length < 2){ alert(`${h}: 좌표가 있는 지점이 최소 2개 필요해요!`); return; }
   const btn = document.getElementById(`btn-${h}`);
   btn.textContent = '⏳'; btn.disabled = true;
@@ -680,7 +912,6 @@ async function 코스계산(h){
       const offsetY = (parseFloat(goalP.y) + 0.00001).toFixed(7);
       실제goal = `${offsetX},${offsetY}`;
       경유지배열 = 지점들.slice(1, -1).map(p=>`${p.x},${p.y}`);
-      console.log(`[${h}] 순환경로 → 미세오프셋 (${실제goal})`);
     }
     const body = { start:실제start, goal:실제goal, waypoints:경유지배열.length>0?경유지배열.join('|'):undefined };
     const res = await fetch('/api/directions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
@@ -716,7 +947,7 @@ async function 코스계산(h){
       if(rh){ summaryEl.innerHTML='<span style="color:#e53935">❌ 계산 실패</span>'; rh.style.display='flex'; }
     }
     그리기(h, 경로, 지점들);
-    await 시트저장([h]); // 기존모드면 내부에서 스킵
+    await 시트저장([h]);
   } catch(err){ console.error(err); }
   finally{ btn.textContent='🔄'; btn.disabled=false; }
 }
@@ -760,7 +991,7 @@ async function 전체계산(){
 
 // ═══ 구글시트 저장 ═══
 async function 시트저장(대상호차=null){
-  if(현재모드==='기존') return; // ⭐ 기존모드 저장 안 함
+  if(현재모드==='기존') return;
   const 관할 = document.getElementById('sel관할').value;
   const 관할코드 = 현재지점[0]?.관할코드 || '';
   const 호차경로맵 = {};
@@ -800,60 +1031,49 @@ function 견적계산(){
     'LPG':   Number(document.getElementById('유가_LPG').value)||950,
     'CNG':   Number(document.getElementById('유가_CNG').value)||700,
   };
-
   const 대상 = 호차목록.filter(h => 코스결과캐시[h]);
   if(대상.length === 0){ alert('먼저 코스계산을 실행해주세요!'); return; }
-
   견적데이터 = [];
   const tbody = document.getElementById('견적테이블바디');
   tbody.innerHTML = '';
   let 총 = {
-    거리:0, 시간:0,
-    유류비공급가:0, 유류비VAT:0,
+    거리:0, 시간:0, 유류비공급가:0, 유류비VAT:0,
     톨비:0, 인건비:0, 감가:0, 경유지수:0, 경유지수당:0,
     소계:0, 기타:0, 원가:0, 이윤:0,
     도급비공급가:0, 도급비VAT:0, 도급비합계:0,
     월도급비공급가:0, 월도급비VAT:0, 월도급비합계:0
   };
-
   대상.forEach(h => {
     const c = 코스결과캐시[h];
     const s = 호차설정[h] || {연료:'디젤', 톤수:'5톤'};
     const 연비 = 연비맵[s.톤수] || 6;
     const 리터당VAT포함 = 현재유가맵[s.연료] || 1650;
-
     const 유류비VAT포함 = c.거리km > 0 ? Math.round(c.거리km / 연비 * 리터당VAT포함) : 0;
     const 유류비공급가  = Math.round(유류비VAT포함 / 1.1);
     const 유류비VAT     = 유류비VAT포함 - 유류비공급가;
     const 톨비 = c.톨비;
-
     const 좌표있는수 = (호차배치[h]||[]).map(item=>지점조회(item.code)).filter(좌표유효).length;
     const 경유지수 = Math.max(0, 좌표있는수 - 1);
     const 경유지수당금액 = 경유지수 * 경유지단가;
     const 인건비 = Math.round((c.시간분 / 60) * 인건비단가);
     const 차량감가 = Math.round(c.거리km * (감가단가맵[s.톤수]||0));
-
     const 소계 = 유류비공급가 + 톨비 + 인건비 + 차량감가 + 경유지수당금액;
     const 기타경비 = Math.round(소계 * 기타율);
     const 원가합계 = 소계 + 기타경비;
     const 이윤금액 = Math.round(원가합계 * 이윤율);
-
     const 도급비공급가  = 원가합계 + 이윤금액;
     const 도급비VAT     = Math.round(도급비공급가 * 0.1);
     const 도급비합계    = 도급비공급가 + 도급비VAT;
     const 월도급비공급가 = 도급비공급가 * 운행일수;
     const 월도급비VAT    = 도급비VAT * 운행일수;
     const 월도급비합계   = 도급비합계 * 운행일수;
-
     const row = {
       호차:h, 톤수:s.톤수, 연료:s.연료, 거리:c.거리km, 시간:c.시간분,
       유류비공급가, 유류비VAT, 톨비, 인건비, 차량감가,
       경유지수, 경유지수당금액, 소계, 기타경비, 원가합계, 이윤:이윤금액,
-      도급비공급가, 도급비VAT, 도급비합계,
-      월도급비공급가, 월도급비VAT, 월도급비합계
+      도급비공급가, 도급비VAT, 도급비합계, 월도급비공급가, 월도급비VAT, 월도급비합계
     };
     견적데이터.push(row);
-
     총.거리+=c.거리km; 총.시간+=c.시간분;
     총.유류비공급가+=유류비공급가; 총.유류비VAT+=유류비VAT;
     총.톨비+=톨비; 총.인건비+=인건비; 총.감가+=차량감가;
@@ -861,7 +1081,6 @@ function 견적계산(){
     총.소계+=소계; 총.기타+=기타경비; 총.원가+=원가합계; 총.이윤+=이윤금액;
     총.도급비공급가+=도급비공급가; 총.도급비VAT+=도급비VAT; 총.도급비합계+=도급비합계;
     총.월도급비공급가+=월도급비공급가; 총.월도급비VAT+=월도급비VAT; 총.월도급비합계+=월도급비합계;
-
     tbody.innerHTML += `<tr>
       <td>${h}</td><td>${s.톤수}</td><td>${s.연료}</td>
       <td>${c.거리km.toFixed(1)}</td><td>${c.시간분}</td>
@@ -879,7 +1098,6 @@ function 견적계산(){
       <td class="월도급비합계">${숫자포맷(월도급비합계)}</td>
     </tr>`;
   });
-
   tbody.innerHTML += `<tr class="합계행">
     <td colspan="3">합 계</td>
     <td>${총.거리.toFixed(1)}</td><td>${총.시간}</td>
@@ -896,7 +1114,6 @@ function 견적계산(){
     <td class="월도급비VAT">${숫자포맷(총.월도급비VAT)}</td>
     <td class="월도급비합계">${숫자포맷(총.월도급비합계)}</td>
   </tr>`;
-
   document.getElementById('견적결과').style.display = 'block';
   document.getElementById('btn-엑셀다운').style.display = 'inline-block';
 }
